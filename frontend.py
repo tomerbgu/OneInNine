@@ -65,7 +65,7 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
 
         self.calendar_path = StringVar()
         self.data_path = StringVar()
-
+        self.check_if_files_exist()
         colors = self.style.colors
 
         coldata = [
@@ -143,6 +143,17 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         elif event.widget == self.label_file_explorer_data:
             self.label_file_explorer_data.configure(text="File Opened: " + event.data)
             self.data_path.set(event.data)
+
+    def check_if_files_exist(self):
+
+        calendar_file = resource_path('data/Calendar_for_2023.xlsx')
+        data_file = resource_path('data/data.xlsx')
+
+        if os.path.exists(calendar_file) and os.path.exists(calendar_file):
+            self.label_file_explorer_calendar.configure(text="File Opened: " + calendar_file)
+            self.calendar_path.set(calendar_file)
+            self.label_file_explorer_data.configure(text="File Opened: " + data_file)
+            self.data_path.set(data_file)
 
 
 # Let the window wait for any events
