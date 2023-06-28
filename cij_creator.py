@@ -6,6 +6,7 @@ from tqdm import tqdm
 import pandas as pd
 from geopy.geocoders import Nominatim
 
+
 def resource_path(relative_path):
     try:
         base_path = sys._MEIPASS
@@ -13,6 +14,7 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
 
     return os.path.join(base_path, relative_path)
+
 
 def calc_cij(etn_hard, etn_soft, lecturer, org, distances):
     language_match = lecturer['language'] == org['language']
@@ -46,7 +48,7 @@ def query_google_map(lat1, long1, lat2, long2):
     url = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=" + str(lat1) + "," + str(
         long1) + "&destinations=" + str(lat2) + "," + str(
         long2) + "&sensor=false&units=metric&key=AIzaSyBdsBLG56CFLVk_z4tqk6_gKi_O9gR6GWU"
-    #print(url)
+    # print(url)
     f = urllib.request.urlopen(url)
     s = f.read()
     s = s.decode('UTF-8')
@@ -54,6 +56,7 @@ def query_google_map(lat1, long1, lat2, long2):
     # print(s)
     a = s.split()
     return a
+
 
 def dist(locs):
     loc_df = pd.DataFrame(columns=['From', 'To', 'Meters', 'Seconds'])
@@ -81,6 +84,7 @@ def dist(locs):
 
     loc_df = pd.concat([loc_df, pd.DataFrame(new_rows)], ignore_index=True)  # Concatenate all new rows at once
     return loc_df
+
 
 """def dist(locs):
     loc_df = pd.DataFrame(columns=['From', 'To', 'Meters', 'Seconds'])
@@ -111,6 +115,7 @@ def dist(locs):
             print(loc_df)
     return loc_df"""
 
+
 def main():
     data_path = resource_path('data/data.xlsx')
     etn_hard = pd.read_excel(data_path, sheet_name='etn_matrix_hard')
@@ -134,7 +139,6 @@ def main():
     distances.to_csv(resource_path('data/output_dist.csv'), encoding='utf-8-sig')
     distances['val'] = distances['Seconds'].apply(lambda x: 10 if int(x) <= 1800 else 5 if 1800 < int(x) <= 2700 else 1)
 
-
     output_table = pd.DataFrame(columns=orgs['id'])
 
     for _, lecturer in lecturers.iterrows():
@@ -156,7 +160,5 @@ def get_coordinates(city):
     return latitude, longitude
 
 
-
 if __name__ == '__main__':
     main()
-

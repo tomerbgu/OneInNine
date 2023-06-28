@@ -42,7 +42,6 @@ def main():
     lecturers.set_index('id', inplace=True)
     lec_data = lecturers.to_dict(orient='index')
 
-
     organizations = pd.read_excel(data_path, sheet_name="org_data")
     organizations.set_index('id', inplace=True)
     for d in ["first_date", "second_date", "third_date"]:
@@ -77,11 +76,9 @@ def main():
     f = pulp.LpVariable.dicts(name="f", indices=indices_f, cat=pulp.LpContinuous, lowBound=0,
                               upBound=18)  # runs from 8:00 to 18:00
 
-
     avl_date = ["first_date", "second_date", "third_date"]
     avl_time = ["first_time", "second_time", "third_time"]
     date_time_tuples = list(zip(avl_date, avl_time))
-
 
     # converting slots to hours for a constarint
     num_slots = 41
@@ -99,7 +96,6 @@ def main():
         time_slots[slot] = f"{hour:02d}:{minute:02d}"
         inv_time_slots[f"{hour:02d}:{minute:02d}"] = slot
         minute += slot_interval
-        
 
     # availability
     calendar_data_path = resource_path('data/Calendar_for_2023.xlsx')
@@ -125,7 +121,6 @@ def main():
     availability_df['From_index'] = availability_df['From'].apply(lambda x: int(inv_time_slots[x]))
     availability_df['Until_index'] = availability_df['Until'].apply(lambda x: int(inv_time_slots[x]))
 
-
     # objective function
 
     model = pulp.LpProblem("Scheduling Model", pulp.LpMaximize)
@@ -149,9 +144,9 @@ def main():
                                          (org_data[i]["second_date"], org_data[i]["second_time"]),
                                          (org_data[i]["third_date"], org_data[i]["third_time"])]:
                         model += (
-                        x[(i, j, d, s)] - 0 == 0, "constraint_9.2_" + str(i) + "_" + str(j) + "_" + str(d) + "_" + str(s))
-                        
-                        
+                            x[(i, j, d, s)] - 0 == 0,
+                            "constraint_9.2_" + str(i) + "_" + str(j) + "_" + str(d) + "_" + str(s))
+
     # Constraint (1)- non-overlap constraint- one lecturer is scheduled to an organization
     for i in org_num:
         for d in days:
@@ -169,39 +164,39 @@ def main():
     # Constraint (3)- for a specific organization in a specific date- one lecturer will be scheduled
     for d in days:
         for i in org_num:
-            if org_data[i]["is_workshop"]==0:
-            #[org_data["id"]==i] and org_data[org_data["is_workshop"]==0]:
+            if org_data[i]["is_workshop"] == 0:
+                # [org_data["id"]==i] and org_data[org_data["is_workshop"]==0]:
                 model += (pulp.lpSum([x[(i, j, d, s)] for j in lec_num for s in slots]) <= 1,
                           "constraint_3_" + str(d) + "_" + str(i))
             else:
-               model += (pulp.lpSum([x[(i, j, d, s)] for j in guide_num for s in slots]) <= 1,
-                  "constraint_4_" + str(d) + "_" + str(i))
-
+                model += (pulp.lpSum([x[(i, j, d, s)] for j in guide_num for s in slots]) <= 1,
+                          "constraint_4_" + str(d) + "_" + str(i))
 
     # Constraint (5) - One lecturer per organization per available date
     for i in org_num:
-            available_days=set([org_data[i]["first_date"], org_data[i]["second_date"], org_data[i]["third_date"]])
-            available_slots = set([slot for slot, time in time_slots.items() if time in [org_data[i]["first_time"], org_data[i]["second_time"], org_data[i]["third_time"]]])
+        available_days = set([org_data[i]["first_date"], org_data[i]["second_date"], org_data[i]["third_date"]])
+        available_slots = set([slot for slot, time in time_slots.items() if
+                               time in [org_data[i]["first_time"], org_data[i]["second_time"],
+                                        org_data[i]["third_time"]]])
 
-            if org_data[i]["is_workshop"]==0:
-                res = pulp.lpSum([x[(i, j, d, s)] for j in lec_num for d in available_days for s in available_slots ]) <= 1,
-                model += (
-                    pulp.lpSum([x[(i, j, d, s)] for j in lec_num for d in available_days for s in available_slots ]) <= 1,
-                    "constraint_5_" + str(i) + "_" + str(d) + "_" + str(j)
-                )
-            else:
+        if org_data[i]["is_workshop"] == 0:
+            res = pulp.lpSum([x[(i, j, d, s)] for j in lec_num for d in available_days for s in available_slots]) <= 1,
+            model += (
+                pulp.lpSum([x[(i, j, d, s)] for j in lec_num for d in available_days for s in available_slots]) <= 1,
+                "constraint_5_" + str(i) + "_" + str(d) + "_" + str(j)
+            )
+        else:
 
-                model += (
-                    pulp.lpSum([x[(i, j, d, s)] for j in guide_num for d in available_days for s in available_slots ]) <= 1,
-                    "constraint_6_" + str(i) + "_" + str(d) + "_" + str(j)
-                )
-
+            model += (
+                pulp.lpSum([x[(i, j, d, s)] for j in guide_num for d in available_days for s in available_slots]) <= 1,
+                "constraint_6_" + str(i) + "_" + str(d) + "_" + str(j)
+            )
 
     # Constraint (7)
     for j in lec_num:
         for d in days:
             for i in org_num:
-                if org_data[i]["is_workshop"]==0:
+                if org_data[i]["is_workshop"] == 0:
 
                     for s in slots:
                         # model += (x[(i,j,d,s)] <= 1 - pulp.lpSum([x[(k,j,d,t)] for t in range(s+1, s+6) for k in org_num if k != i]), "constraint_5_" + str(j) + "_" + str(d) + "_" + str(i) + "_" + str(s))
@@ -212,24 +207,22 @@ def main():
     # Constraint (8)
     for j in guide_num:
         for i in org_num:
-            if org_data[i]["is_workshop"]==1:
+            if org_data[i]["is_workshop"] == 1:
 
                 for d in days:
                     for s in slots:
                         # model += (x[(i,j,d,s)] <= 1 - pulp.lpSum([x[(i,j,d,t)] for t in range(s+1, s+10)]), "constraint_6_" + str(j) + "_" + str(i) + "_" + str(d) + "_" + str(s))
                         model += (
-                        x[(i, j, d, s)] <= 1 - pulp.lpSum([x[(i, j, d, t)] for t in range(s + 1, min(s + 10, 42))]),
-                        "constraint_8_" + str(j) + "_" + str(i) + "_" + str(d) + "_" + str(s))
+                            x[(i, j, d, s)] <= 1 - pulp.lpSum([x[(i, j, d, t)] for t in range(s + 1, min(s + 10, 42))]),
+                            "constraint_8_" + str(j) + "_" + str(i) + "_" + str(d) + "_" + str(s))
 
     # Constraint (9) - Availability
     for i in org_num:
         for j in total_volunteers:
-                for d in days:
-                    for s in slots:
-                        model += (x[(i, j, d, s)] <= is_available(availability_df, j, d, s),
-                                  "constraint_9_" + str(i) + "_" + str(j) + "_" + str(d) + "_" + str(s))
-
-
+            for d in days:
+                for s in slots:
+                    model += (x[(i, j, d, s)] <= is_available(availability_df, j, d, s),
+                              "constraint_9_" + str(i) + "_" + str(j) + "_" + str(d) + "_" + str(s))
 
     # Constraint (9.1)
     for i in org_num:
@@ -239,13 +232,12 @@ def main():
                 "constraint_9.1_" + str(i) + "_" + str(j)
             )
 
-
     # Constraint (10)
     for j in total_volunteers:
         for d in days:
             model += (
-            pulp.lpSum([x[(i, j, d, s)] for i in org_num for s in slots]) <= lec_data[j]["vol_limit"] + z[(j, d)],
-            "constraint_10_" + str(j) + "_" + str(d))
+                pulp.lpSum([x[(i, j, d, s)] for i in org_num for s in slots]) <= lec_data[j]["vol_limit"] + z[(j, d)],
+                "constraint_10_" + str(j) + "_" + str(d))
     # Create a set of valid organization combinations to iterate over
     valid_combinations = [(k, i) for k in org_num for i in org_num if i != k]
 
@@ -253,13 +245,16 @@ def main():
     distances = {}
     availability = {}
     for k, i in valid_combinations:
-        dist = float(dist_data.loc[(dist_data['from'] == org_data[k]["address"]) & (dist_data['to'] == org_data[i]["address"]), 'seconds'].values[0])
+        dist = float(dist_data.loc[(dist_data['from'] == org_data[k]["address"]) & (
+                    dist_data['to'] == org_data[i]["address"]), 'seconds'].values[0])
         distances[(k, i)] = dist
         availability[(k, i)] = (
             set([org_data[k]["first_date"], org_data[k]["second_date"], org_data[k]["third_date"]]),
             set([org_data[i]["first_date"], org_data[i]["second_date"], org_data[i]["third_date"]]),
-            set([slot for slot, time in time_slots.items() if time in [org_data[k]["first_time"], org_data[k]["second_time"], org_data[k]["third_time"]]]),
-            set([slot for slot, time in time_slots.items() if time in [org_data[i]["first_time"], org_data[i]["second_time"], org_data[i]["third_time"]]])
+            set([slot for slot, time in time_slots.items() if
+                 time in [org_data[k]["first_time"], org_data[k]["second_time"], org_data[k]["third_time"]]]),
+            set([slot for slot, time in time_slots.items() if
+                 time in [org_data[i]["first_time"], org_data[i]["second_time"], org_data[i]["third_time"]]])
         )
 
     # Constraint (11)
@@ -275,22 +270,20 @@ def main():
                         dist = distances[(k, i)]
 
                         model += (
-                            f[(i, j, d)] >= f[(k, j, d)] + lec_length + 0.5 * float((1 - lec_data[j]["mobility"])) * dist
+                            f[(i, j, d)] >= f[(k, j, d)] + lec_length + 0.5 * float(
+                                (1 - lec_data[j]["mobility"])) * dist
                             + dist - 10000 * (2 - x[(k, j, d, o)] - x[(i, j, d, s)])
-                            , "constraint_11_" + str(k) + "_" + str(i) + "_" + str(j) + "_" + str(d) + "_" + str(s) + "_" + str(o)
+                            , "constraint_11_" + str(k) + "_" + str(i) + "_" + str(j) + "_" + str(d) + "_" + str(
+                                s) + "_" + str(o)
                         )
-
-
 
     # Constraint (12)
     for i in org_num:
         for j in total_volunteers:
             for d in days:
-                model += (f[(i, j, d)] == pulp.lpSum([x[(i, j, d, s)] * (8 + ((s-1) * 15) / 60) for s in slots]),
+                model += (f[(i, j, d)] == pulp.lpSum([x[(i, j, d, s)] * (8 + ((s - 1) * 15) / 60) for s in slots]),
                           "constraint_12_" + str(i) + "_" + str(j) + "_" + str(d))
 
-
-  
     # running
     print("Solving Optimization Problem:")
     model.solve()
@@ -302,7 +295,7 @@ def main():
 
         # Retrieve and print the values of x[(i, j, d, s)]
         for item in indices_x:
-            if(x[item].varValue != 0.0):
+            if (x[item].varValue != 0.0):
                 print("x-" + str(item), x[item].varValue)
 
         # Retrieve and print the values of u[(i, j, d)]
@@ -313,10 +306,11 @@ def main():
     else:
         print("Optimization problem did not find an optimal solution.")
 
-# ----------------------------------------------------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------------------------------------------------
 
     # Create a DataFrame to store the results
     results_df = pd.DataFrame(columns=['Organization', 'Volunteer', 'Day', 'Time'])
+
 
     # Iterate over the indices_x and retrieve the values
     for item in indices_x:
@@ -326,15 +320,17 @@ def main():
             volunteer_name = lec_data[volunteer_id]['full_name']
             day_str = f"{day}/10/{current_year}"
             Start_time = time_slots[slot]
-            results_df = results_df.append({'Organization': organization_name,
-                                            'Volunteer': volunteer_name,
-                                            'Day': day_str,
-                                            'Time': Start_time}, ignore_index=True)
+            results_df = pd.concat([results_df, pd.DataFrame({'Organization': [organization_name],
+                                                              'Volunteer': [volunteer_name],
+                                                              'Day': [day_str],
+                                                              'Time': [Start_time]})])
+
 
     # Save the results to an Excel file
     print("Saving results to file")
     results_df.to_excel('results.xlsx', index=False)
     print("Finished Calculations: Results can be found in results.xlsx file")
+    return results_df
 
 
 if __name__ == '__main__':
