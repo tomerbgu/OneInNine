@@ -3,15 +3,17 @@ import os
 import shutil
 import sys
 from tkinter import *
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
+from tkinter.messagebox import showinfo
 
+import pandas as pd
 import ttkbootstrap as ttk
 from tkinterdnd2 import *
 from ttkbootstrap.constants import *
 from ttkbootstrap.tableview import Tableview
 from ttkbootstrap.utility import enable_high_dpi_awareness
 
-import model
+from model import Model
 
 
 def create_directory(directory):
@@ -55,7 +57,8 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         self.geometry("900x700")
 
         self.config(background="white")
-
+        self.model = None
+        self.dt = None
         # Create a File Explorer label
         # labelframe = ttk.Label(self, text='dddd', bootstyle='secondary')
         self.label_file_explorer_calendar = ttk.Label(self, text="Calendar", background="#cdfeec")
@@ -78,8 +81,7 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         self.calendar_path = StringVar()
         self.data_path = StringVar()
         self.file_exists = self.check_if_files_exist()
-
-        button_calc = ttk.Button(self, text="Calculate", command=lambda: self.calculate(self.file_exists),
+        button_calc = ttk.Button(self, text="Calculate", command=self.calculate,
                                  bootstyle="success")
         button_exit = ttk.Button(self, text="Exit", command=sys.exit, bootstyle="danger")
 
@@ -106,34 +108,80 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
             self.data_path.set(filename)
         self.file_exists = False
 
-    def calculate(self, file_exists):
+    def calculate(self,):
         if self.calendar_path.get() == '':
             print("need to choose calendar")
         elif self.data_path.get() == '':
             print("need to choose data")
         else:
+            if self.model == None:
+                self.model = Model()
             print("copying files")
             create_directory("data")
-            if not file_exists:
+            if not self.file_exists:
                 clear_directory(resource_path("data"))
                 copy_file_to_directory(self.calendar_path.get(),
                                        resource_path(f"data/{self.config_reader.get('files', 'calendar_file')}"))
                 copy_file_to_directory(self.data_path.get(),
                                        resource_path(f"data/{self.config_reader.get('files', 'data_file')}"))
             print("calculating:")
-            results = model.main()
-            colors = self.style.colors
-            dt = Tableview(
-                master=self,
-                coldata=results.columns,
-                rowdata=results.values,
-                paginated=True,
-                searchable=True,
-                bootstyle=PRIMARY,
-                stripecolor=(colors.light, None),
-                autofit=True,
-            )
-            dt.place(relx=0.5, rely=0.7, anchor='center')
+            results = self.model.solve_model()
+            if self.dt is None:
+                self.create_table(results)
+            else:
+                self.update_table(results)
+
+    def create_table(self, results):
+        if results.empty:
+            showinfo(title='No Results', message="We're sorry, but we couldn't find a solution that meets all of the requirements")
+            return
+        colors = self.style.colors
+        self.dt = Tableview(
+            master=self,
+            coldata=results.columns,
+            rowdata=results.values,
+            paginated=True,
+            searchable=True,
+            bootstyle=PRIMARY,
+            stripecolor=(colors.light, None),
+            autofit=True
+        )
+        self.dt.view.configure(selectmode='none')
+        self.dt.view.bind('<Button-3>', lambda x: None)
+        self.dt.view.bind('<ButtonRelease-1>', lambda x: self.select_row(self.dt.view))
+        self.dt.view.selection_remove(self.dt.view.selection())
+
+        self.dt.place(relx=0.5, rely=0.7, anchor='center')
+
+        button_retry = ttk.Button(self, text="Try Again", command=self.show_confirmation_dialog)
+        button_retry.place(relx=0.5, rely=.95, anchor='s')
+
+    def update_table(self, results):
+        if results.empty:
+            showinfo(title='No Results', message="We're sorry, but we couldn't find a solution that meets all of the requirements")
+            return
+        self.dt.delete_rows()
+        [self.dt.insert_row(values=row.tolist()) for index, row in results.iterrows()]
+        self.dt.load_table_data(clear_filters=True)
+
+    def select_row(self, tree):
+        tree.selection_toggle(tree.focus())
+
+    def retry(self):
+        selected_items = self.dt.view.selection()
+        selected_rows = [{"org": val[0], "lec": val[1], "date": val[2], "slot": val[3]}
+                         for val in (self.dt.view.item(item)["values"] for item in selected_items)]
+
+        self.model.add_custom_constraints(selected_rows)
+        results = self.model.solve_model()
+        self.update_table(results)
+
+    def show_confirmation_dialog(self):
+        answer = messagebox.askyesno("Confirmation", "Are you sure you want to proceed?")
+        if answer:
+            self.retry()
+        else:
+            print("User clicked No")
 
     def on_drop(self, event):
         # Get the list of files dropped into the window
@@ -157,6 +205,7 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
             self.data_path.set(data_file)
             return True
         return False
+
 
 
 # Let the window wait for any events

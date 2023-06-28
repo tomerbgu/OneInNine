@@ -62,7 +62,7 @@ def query_google_map(lat1, long1, lat2, long2):
     return a
 
 
-@retry((GeocoderTimedOut, socket.timeout), tries=3, delay=2)
+@retry((GeocoderTimedOut, socket.timeout, urllib.error.URLError), tries=3, delay=2)
 def dist(locs):
     loc_df = pd.DataFrame(columns=['From', 'To', 'Meters', 'Seconds'])
     lon = locs['lon']
