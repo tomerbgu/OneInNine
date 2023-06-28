@@ -305,7 +305,7 @@ def main():
     # ----------------------------------------------------------------------------------------------------------------------
 
     # Create a DataFrame to store the results
-    results_df = pd.DataFrame(columns=['Organization', 'Volunteer', 'Day', 'Time'])
+    results_df = pd.DataFrame(columns=['Organization', 'Volunteer', 'Day', 'Start Time', 'End Time', 'Location', 'Type'])
 
 
     # Iterate over the indices_x and retrieve the values
@@ -319,7 +319,10 @@ def main():
             results_df = pd.concat([results_df, pd.DataFrame({'Organization': [organization_name],
                                                               'Volunteer': [volunteer_name],
                                                               'Day': [day_str],
-                                                              'Time': [Start_time]})])
+                                                              'Start Time': [Start_time],
+                                                              'End Time':[time_slots[slot + (8 if org_data[org_id]['is_workshop']==1 else 4)]],
+                                                              'Location':[org_data[org_id]['address']],
+                                                              'Type': 'Workshop' if org_data[org_id]['is_workshop']==1 else 'Lecture'})])
 
 
     # Save the results to an Excel file
