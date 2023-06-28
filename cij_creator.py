@@ -1,3 +1,4 @@
+import configparser
 import time
 import urllib.request
 import sys
@@ -117,7 +118,10 @@ def dist(locs):
 
 
 def main():
-    data_path = resource_path('data/data.xlsx')
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    data_path = resource_path(f"data/{config.get('files', 'data_file')}")
+
     etn_hard = pd.read_excel(data_path, sheet_name='etn_matrix_hard')
     etn_hard.set_index("Etn", inplace=True)
     etn_soft = pd.read_excel(data_path, sheet_name='etn_matrix_soft')
@@ -136,7 +140,7 @@ def main():
     locs = locs.reset_index()
     locs[['lat', 'lon']] = locs['address'].apply(get_coordinates).apply(pd.Series)
     distances = dist(locs)
-    distances.to_csv(resource_path('data/output_dist.csv'), encoding='utf-8-sig')
+    distances.to_csv(resource_path(f"data/{config.get('files', 'distances')}"), encoding='utf-8-sig')
     distances['val'] = distances['Seconds'].apply(lambda x: 10 if int(x) <= 1800 else 5 if 1800 < int(x) <= 2700 else 1)
 
     output_table = pd.DataFrame(columns=orgs['id'])
@@ -149,7 +153,7 @@ def main():
             lecturer_values.append(value)
 
         output_table.loc[lecturer['id']] = lecturer_values
-    output_table.to_csv(resource_path('data/cij_matrix.csv'))
+    output_table.to_csv(resource_path(f"data/{config.get('files', 'cij_matrix')}"))
 
 
 def get_coordinates(city):

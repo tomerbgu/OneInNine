@@ -1,13 +1,14 @@
+import configparser
 import os
+import shutil
 import sys
 from tkinter import *
 from tkinter import filedialog
-from tkinterdnd2 import *
-import ttkbootstrap as ttk
-from ttkbootstrap.tableview import Tableview
-from ttkbootstrap.constants import *
-import shutil
 
+import ttkbootstrap as ttk
+from tkinterdnd2 import *
+from ttkbootstrap.constants import *
+from ttkbootstrap.tableview import Tableview
 from ttkbootstrap.utility import enable_high_dpi_awareness
 
 import model
@@ -20,6 +21,7 @@ def create_directory(directory):
     else:
         print("Directory already exists:", directory)
 
+
 def clear_directory(directory_path):
     for root, dirs, files in os.walk(directory_path):
         for file in files:
@@ -29,8 +31,10 @@ def clear_directory(directory_path):
             dir_path = os.path.join(root, dir)
             os.rmdir(dir_path)
 
+
 def copy_file_to_directory(source_file, destination_directory):
     shutil.copy(source_file, destination_directory)
+
 
 def resource_path(relative_path):
     try:
@@ -40,9 +44,12 @@ def resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
+
 class PopupWindow(ttk.Window, TkinterDnD.Tk):
     def __init__(self, **args):
         super().__init__(**args)
+        self.config_reader = configparser.ConfigParser()
+        self.config_reader.read('config.ini')
 
         self.title('One in Nine')
         self.geometry("900x700")
@@ -52,12 +59,15 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         # Create a File Explorer label
         # labelframe = ttk.Label(self, text='dddd', bootstyle='secondary')
         self.label_file_explorer_calendar = ttk.Label(self, text="Calendar", background="#cdfeec")
-        button_explore_calendar = ttk.Button(self, text="Browse Files", command=lambda: self.browseFiles(self.label_file_explorer_calendar), bootstyle="success-outline")
+        button_explore_calendar = ttk.Button(self, text="Browse Files",
+                                             command=lambda: self.browseFiles(self.label_file_explorer_calendar),
+                                             bootstyle="success-outline")
 
         # labelframe2 = ttk.Labelframe(self, text='My Labelframe', bootstyle='secondary')
         self.label_file_explorer_data = ttk.Label(self, text="Data", background="#cdfeec")
-        button_explore_data = ttk.Button(self, text="Browse Files", command=lambda: self.browseFiles(self.label_file_explorer_data), bootstyle="success-outline")
-
+        button_explore_data = ttk.Button(self, text="Browse Files",
+                                         command=lambda: self.browseFiles(self.label_file_explorer_data),
+                                         bootstyle="success-outline")
 
         self.label_file_explorer_calendar.drop_target_register(DND_FILES)
         self.label_file_explorer_calendar.dnd_bind('<<Drop>>', self.on_drop)
@@ -69,7 +79,8 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         self.data_path = StringVar()
         self.file_exists = self.check_if_files_exist()
 
-        button_calc = ttk.Button(self, text="Calculate", command=lambda: self.calculate(self.file_exists), bootstyle="success")
+        button_calc = ttk.Button(self, text="Calculate", command=lambda: self.calculate(self.file_exists),
+                                 bootstyle="success")
         button_exit = ttk.Button(self, text="Exit", command=sys.exit, bootstyle="danger")
 
         self.label_file_explorer_calendar.place(relx=0.5, rely=0.1, anchor='center')
@@ -78,7 +89,6 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         button_explore_data.place(relx=0.5, rely=0.4, anchor='center')
         button_exit.place(relx=0.1, rely=0.9, anchor='sw')
         button_calc.place(relx=0.9, rely=0.9, anchor='se')
-
 
     def browseFiles(self, label_file_explorer):
         filename = filedialog.askopenfilename(initialdir="/",
@@ -97,18 +107,18 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         self.file_exists = False
 
     def calculate(self, file_exists):
-        if self.calendar_path.get()=='':
+        if self.calendar_path.get() == '':
             print("need to choose calendar")
-        elif self.data_path.get()=='':
+        elif self.data_path.get() == '':
             print("need to choose data")
         else:
             print("copying files")
             create_directory("data")
             if not file_exists:
                 clear_directory(resource_path("data"))
-                copy_file_to_directory(self.calendar_path.get(), resource_path("data"))
-                copy_file_to_directory(self.data_path.get(), resource_path("data"))
-            print("calcluating:")
+                copy_file_to_directory(self.calendar_path.get(), resource_path(f"data/{self.config_reader.get('files', 'calendar_file')}"))
+                copy_file_to_directory(self.data_path.get(), resource_path(f"data/{self.config_reader.get('files', 'data_file')}"))
+            print("calculating:")
             results = model.main()
             colors = self.style.colors
             dt = Tableview(
@@ -123,7 +133,6 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
             )
             dt.place(relx=0.5, rely=0.7, anchor='center')
 
-
     def on_drop(self, event):
         # Get the list of files dropped into the window
         if event.widget == self.label_file_explorer_calendar:
@@ -136,8 +145,8 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
 
     def check_if_files_exist(self):
 
-        calendar_file = resource_path('data/Calendar_for_2023.xlsx')
-        data_file = resource_path('data/data.xlsx')
+        calendar_file = resource_path(f"data/{self.config_reader.get('files', 'calendar_file')}")
+        data_file = resource_path(f"data/{self.config_reader.get('files', 'data_file')}")
 
         if os.path.exists(calendar_file) and os.path.exists(calendar_file):
             self.label_file_explorer_calendar.configure(text="File Opened: " + calendar_file)
@@ -150,7 +159,7 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
 
 # Let the window wait for any events
 if __name__ == "__main__":
-    window = PopupWindow()#themename="superhero"
+    window = PopupWindow()  # themename="superhero"
     enable_high_dpi_awareness(root=window, scaling=1)
 
     window.mainloop()

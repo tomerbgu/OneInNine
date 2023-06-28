@@ -1,10 +1,4 @@
-# -*- coding: utf-8 -*-
-
-
-# humanitarian logistic
-import os
-import sys
-
+import configparser
 import pandas as pd
 import pulp
 from openpyxl.reader.excel import load_workbook
@@ -26,11 +20,14 @@ def is_available(availability_df, lecturer_index, day, time_slot):
 
 
 def main():
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+
     cij_creator.main()
 
-    cij_path = resource_path('data/cij_matrix.csv')
-    data_path = resource_path('data/data.xlsx')
-    dist_path = resource_path('data/output_dist.csv')
+    cij_path = resource_path(f'data/{config.get("files", "cij_matrix")}')
+    data_path = resource_path(f'data/{config.get("files", "data_file")}')
+    dist_path = resource_path(f'data/{config.get("files", "distances")}')
     # Convert the DataFrame to a dictionary
     df = pd.read_csv(cij_path, index_col=0)  # Assuming the row headers are in the first column
     # Convert column and row index values to integers
@@ -99,7 +96,7 @@ def main():
         minute += slot_interval
 
     # availability
-    calendar_data_path = resource_path('data/Calendar_for_2023.xlsx')
+    calendar_data_path = resource_path(f'data/{config.get("files", "calendar_file")}')
     workbook = load_workbook(calendar_data_path)
     sheet_names = workbook.sheetnames
     illegal_sheet_names = ['OCTOBER', 'Slots']
@@ -305,7 +302,7 @@ def main():
     # ----------------------------------------------------------------------------------------------------------------------
 
     # Create a DataFrame to store the results
-    results_df = pd.DataFrame(columns=['Organization', 'Volunteer', 'Day', 'Start Time', 'End Time', 'Location', 'Type'])
+    results_df = pd.DataFrame(columns=['Organization', 'Volunteer', 'Date', 'Start Time', 'End Time', 'Location', 'Type'])
 
 
     # Iterate over the indices_x and retrieve the values
@@ -318,7 +315,7 @@ def main():
             Start_time = time_slots[slot]
             results_df = pd.concat([results_df, pd.DataFrame({'Organization': [organization_name],
                                                               'Volunteer': [volunteer_name],
-                                                              'Day': [day_str],
+                                                              'Date': [day_str],
                                                               'Start Time': [Start_time],
                                                               'End Time':[time_slots[slot + (8 if org_data[org_id]['is_workshop']==1 else 4)]],
                                                               'Location':[org_data[org_id]['address']],
@@ -327,7 +324,8 @@ def main():
 
     # Save the results to an Excel file
     print("Saving results to file")
-    results_df.to_excel('results.xlsx', index=False)
+    results_file = config.get('files', 'output_file')
+    results_df.to_excel(f'{results_file}.xlsx', index=False)
     print("Finished Calculations: Results can be found in results.xlsx file")
     return results_df
 
