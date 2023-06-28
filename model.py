@@ -40,6 +40,7 @@ def main():
 
     lecturers = pd.read_excel(data_path, sheet_name="lecturer_data")
     lecturers.set_index('id', inplace=True)
+    lecturers['position'] = lecturers['position'].apply(lambda x: x.split(',')) #to allow multiple roles per person
     lec_data = lecturers.to_dict(orient='index')
 
     organizations = pd.read_excel(data_path, sheet_name="org_data")
@@ -55,8 +56,8 @@ def main():
     # input
     org_num = list(organizations.index)
     total_volunteers = list(lecturers.index)
-    lec_num = list(lecturers[lecturers['position'] == 'Lecturer'].index)  # מספר המרצות
-    guide_num = list(lecturers[lecturers['position'] == 'Guide'].index)  # מספר המנחות
+    lec_num = [i for i in total_volunteers if 'Lecturer' in lecturers.loc[i]['position']]
+    guide_num = [i for i in total_volunteers if 'Guide' in lecturers.loc[i]['position']]
     days = range(1, 32)  # 31 days in October
     slots = range(1, 42)  # 41 slots of 15 min in a day
 
@@ -80,7 +81,7 @@ def main():
     avl_time = ["first_time", "second_time", "third_time"]
     date_time_tuples = list(zip(avl_date, avl_time))
 
-    # converting slots to hours for a constarint
+    # converting slots to hours for a constraint
     num_slots = 41
     start_hour = 8
     slot_interval = 15
@@ -130,7 +131,7 @@ def main():
 
     for i in org_num:
         model += (pulp.lpSum([x[(i, j, d, s)] for d in days for s in slots for j in total_volunteers]) <= 1,
-                  f"constraint_T_{i}")
+                  f"constraint_one_slot_per_org_{i}")
 
     # Constraint (9.2)
     for i in org_num:
@@ -174,22 +175,20 @@ def main():
 
     # Constraint (5) - One lecturer per organization per available date
     for i in org_num:
-        available_days = set([org_data[i]["first_date"], org_data[i]["second_date"], org_data[i]["third_date"]])
+        available_days = {org_data[i]["first_date"], org_data[i]["second_date"], org_data[i]["third_date"]}
         available_slots = set([slot for slot, time in time_slots.items() if
                                time in [org_data[i]["first_time"], org_data[i]["second_time"],
                                         org_data[i]["third_time"]]])
 
         if org_data[i]["is_workshop"] == 0:
-            res = pulp.lpSum([x[(i, j, d, s)] for j in lec_num for d in available_days for s in available_slots]) <= 1,
             model += (
-                pulp.lpSum([x[(i, j, d, s)] for j in lec_num for d in available_days for s in available_slots]) <= 1,
-                "constraint_5_" + str(i) + "_" + str(d) + "_" + str(j)
+                pulp.lpSum([x[(i, j, d, s)] for j in lec_num for d in available_days for s in available_slots]) == 1,
+                "constraint_5_" + str(i) + "_" + str(d)
             )
         else:
-
             model += (
-                pulp.lpSum([x[(i, j, d, s)] for j in guide_num for d in available_days for s in available_slots]) <= 1,
-                "constraint_6_" + str(i) + "_" + str(d) + "_" + str(j)
+                pulp.lpSum([x[(i, j, d, s)] for j in guide_num for d in available_days for s in available_slots]) == 1,
+                "constraint_6_" + str(i) + "_" + str(d)
             )
 
     # Constraint (7)
@@ -197,9 +196,7 @@ def main():
         for d in days:
             for i in org_num:
                 if org_data[i]["is_workshop"] == 0:
-
                     for s in slots:
-                        # model += (x[(i,j,d,s)] <= 1 - pulp.lpSum([x[(k,j,d,t)] for t in range(s+1, s+6) for k in org_num if k != i]), "constraint_5_" + str(j) + "_" + str(d) + "_" + str(i) + "_" + str(s))
                         model += (x[(i, j, d, s)] <= 1 - pulp.lpSum(
                             [x[(k, j, d, t)] for t in range(s + 1, min(s + 6, 42)) for k in org_num if k != i]),
                                   "constraint_7_" + str(i) + "_" + str(j) + "_" + str(d) + "_" + str(s))
@@ -208,13 +205,12 @@ def main():
     for j in guide_num:
         for i in org_num:
             if org_data[i]["is_workshop"] == 1:
-
                 for d in days:
                     for s in slots:
                         # model += (x[(i,j,d,s)] <= 1 - pulp.lpSum([x[(i,j,d,t)] for t in range(s+1, s+10)]), "constraint_6_" + str(j) + "_" + str(i) + "_" + str(d) + "_" + str(s))
                         model += (
                             x[(i, j, d, s)] <= 1 - pulp.lpSum([x[(i, j, d, t)] for t in range(s + 1, min(s + 10, 42))]),
-                            "constraint_8_" + str(j) + "_" + str(i) + "_" + str(d) + "_" + str(s))
+                            f"constraint_8_{j}_{i}_{d}_{s}")
 
     # Constraint (9) - Availability
     for i in org_num:
@@ -336,7 +332,6 @@ def main():
 if __name__ == '__main__':
     print("Starting calculation of best way to assign lecturers to organizations")
     try:
-        cij_creator.main()
         main()
     except Exception as e:
         print("Error: ", e)
