@@ -1,8 +1,11 @@
 import configparser
-import time
 import urllib.request
 import sys
 import os
+from socket import socket
+
+from retry import retry
+from geopy.exc import GeocoderTimedOut
 from tqdm import tqdm
 import pandas as pd
 from geopy.geocoders import Nominatim
@@ -58,7 +61,7 @@ def query_google_map(lat1, long1, lat2, long2):
     a = s.split()
     return a
 
-
+@retry((GeocoderTimedOut, socket.timeout ), tries=3, delay=2)
 def dist(locs):
     loc_df = pd.DataFrame(columns=['From', 'To', 'Meters', 'Seconds'])
     lon = locs['lon']
