@@ -1,8 +1,10 @@
 import configparser
+import datetime
+
 import pandas as pd
 import pulp
 from openpyxl.reader.excel import load_workbook
-import datetime
+
 import cij_creator
 from cij_creator import resource_path
 
@@ -37,7 +39,7 @@ def main():
 
     lecturers = pd.read_excel(data_path, sheet_name="lecturer_data")
     lecturers.set_index('id', inplace=True)
-    lecturers['position'] = lecturers['position'].apply(lambda x: x.split(',')) #to allow multiple roles per person
+    lecturers['position'] = lecturers['position'].apply(lambda x: x.split(','))  # to allow multiple roles per person
     lec_data = lecturers.to_dict(orient='index')
 
     organizations = pd.read_excel(data_path, sheet_name="org_data")
@@ -239,7 +241,7 @@ def main():
     availability = {}
     for k, i in valid_combinations:
         dist = float(dist_data.loc[(dist_data['from'] == org_data[k]["address"]) & (
-                    dist_data['to'] == org_data[i]["address"]), 'seconds'].values[0])
+                dist_data['to'] == org_data[i]["address"]), 'seconds'].values[0])
         distances[(k, i)] = dist
         availability[(k, i)] = (
             set([org_data[k]["first_date"], org_data[k]["second_date"], org_data[k]["third_date"]]),
@@ -299,11 +301,10 @@ def main():
     else:
         print("Optimization problem did not find an optimal solution.")
 
-    # ----------------------------------------------------------------------------------------------------------------------
 
     # Create a DataFrame to store the results
-    results_df = pd.DataFrame(columns=['Organization', 'Volunteer', 'Date', 'Start Time', 'End Time', 'Location', 'Type'])
-
+    results_df = pd.DataFrame(
+        columns=['Organization', 'Volunteer', 'Date', 'Start Time', 'End Time', 'Location', 'Type'])
 
     # Iterate over the indices_x and retrieve the values
     for item in indices_x:
@@ -317,10 +318,11 @@ def main():
                                                               'Volunteer': [volunteer_name],
                                                               'Date': [day_str],
                                                               'Start Time': [Start_time],
-                                                              'End Time':[time_slots[slot + (8 if org_data[org_id]['is_workshop']==1 else 4)]],
-                                                              'Location':[org_data[org_id]['address']],
-                                                              'Type': 'Workshop' if org_data[org_id]['is_workshop']==1 else 'Lecture'})])
-
+                                                              'End Time': [time_slots[slot + (
+                                                                  8 if org_data[org_id]['is_workshop'] == 1 else 4)]],
+                                                              'Location': [org_data[org_id]['address']],
+                                                              'Type': 'Workshop' if org_data[org_id][
+                                                                                        'is_workshop'] == 1 else 'Lecture'})])
 
     # Save the results to an Excel file
     print("Saving results to file")

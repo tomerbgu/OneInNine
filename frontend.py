@@ -116,8 +116,10 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
             create_directory("data")
             if not file_exists:
                 clear_directory(resource_path("data"))
-                copy_file_to_directory(self.calendar_path.get(), resource_path(f"data/{self.config_reader.get('files', 'calendar_file')}"))
-                copy_file_to_directory(self.data_path.get(), resource_path(f"data/{self.config_reader.get('files', 'data_file')}"))
+                copy_file_to_directory(self.calendar_path.get(),
+                                       resource_path(f"data/{self.config_reader.get('files', 'calendar_file')}"))
+                copy_file_to_directory(self.data_path.get(),
+                                       resource_path(f"data/{self.config_reader.get('files', 'data_file')}"))
             print("calculating:")
             results = model.main()
             colors = self.style.colors

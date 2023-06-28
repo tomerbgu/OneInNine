@@ -1,14 +1,14 @@
 import configparser
-import urllib.request
-import sys
 import os
+import sys
+import urllib.request
 from socket import socket
 
-from retry import retry
-from geopy.exc import GeocoderTimedOut
-from tqdm import tqdm
 import pandas as pd
+from geopy.exc import GeocoderTimedOut
 from geopy.geocoders import Nominatim
+from retry import retry
+from tqdm import tqdm
 
 
 def resource_path(relative_path):
@@ -61,7 +61,8 @@ def query_google_map(lat1, long1, lat2, long2):
     a = s.split()
     return a
 
-@retry((GeocoderTimedOut, socket.timeout ), tries=3, delay=2)
+
+@retry((GeocoderTimedOut, socket.timeout), tries=3, delay=2)
 def dist(locs):
     loc_df = pd.DataFrame(columns=['From', 'To', 'Meters', 'Seconds'])
     lon = locs['lon']
@@ -88,36 +89,6 @@ def dist(locs):
 
     loc_df = pd.concat([loc_df, pd.DataFrame(new_rows)], ignore_index=True)  # Concatenate all new rows at once
     return loc_df
-
-
-"""def dist(locs):
-    loc_df = pd.DataFrame(columns=['From', 'To', 'Meters', 'Seconds'])
-    lon = locs['lon']
-    lat = locs['lat']
-    station_id = locs['address']
-
-    # queries each pair of stations and outputs distance and travel duration
-    for i in tqdm(range(len(locs))):
-        for j in range(len(locs)):
-            a = query_google_map(lat[i], lon[i], lat[j], lon[j])
-            from_loc = str(station_id[i])
-            to_loc = str(station_id[j])
-
-            ind1 = find_text_in_list(a, '"distance"')
-            ind2 = find_text_in_list(a, '"value"', ind1)
-            distance = a[ind2 + 2]
-            ind1 = find_text_in_list(a, '"duration"', ind2)
-            ind2 = find_text_in_list(a, '"value"', ind1)
-            duration = a[ind2 + 2]
-            new_row = {'From': from_loc, 'To': to_loc, 'Meters': distance, 'Seconds': duration}
-            # Convert the new row to a DataFrame
-            new_row_df = pd.DataFrame([new_row])
-
-            # Concatenate the new row DataFrame with loc_df
-            loc_df = pd.concat([loc_df, new_row_df], ignore_index=True)
-            #loc_df = loc_df.append(new_row, ignore_index=True)
-            print(loc_df)
-    return loc_df"""
 
 
 def main():
