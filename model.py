@@ -253,7 +253,7 @@ class Model():
 
                             self.model += (
                                 self.f[(i, j, d)] >= self.f[(k, j, d)] + lec_length + 0.5 * float(
-                                    (1 - self.ec_data[j]["mobility"])) * dist
+                                    (1 - self.lec_data[j]["mobility"])) * dist
                                 + dist - 10000 * (2 - self.x[(k, j, d, o)] - self.x[(i, j, d, s)])
                                 , "constraint_11_" + str(k) + "_" + str(i) + "_" + str(j) + "_" + str(d) + "_" + str(
                                     s) + "_" + str(o)
