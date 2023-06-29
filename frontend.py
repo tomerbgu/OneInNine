@@ -6,7 +6,6 @@ from tkinter import *
 from tkinter import filedialog, messagebox
 from tkinter.messagebox import showinfo
 
-import pandas as pd
 import ttkbootstrap as ttk
 from tkinterdnd2 import *
 from ttkbootstrap.constants import *
@@ -108,14 +107,12 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
             self.data_path.set(filename)
         self.file_exists = False
 
-    def calculate(self,):
+    def calculate(self, ):
         if self.calendar_path.get() == '':
             print("need to choose calendar")
         elif self.data_path.get() == '':
             print("need to choose data")
         else:
-            if self.model == None:
-                self.model = Model()
             print("copying files")
             create_directory("data")
             if not self.file_exists:
@@ -124,16 +121,19 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
                                        resource_path(f"data/{self.config_reader.get('files', 'calendar_file')}"))
                 copy_file_to_directory(self.data_path.get(),
                                        resource_path(f"data/{self.config_reader.get('files', 'data_file')}"))
+            if self.model == None:
+                self.model = Model()
             print("calculating:")
-            results = self.model.solve_model()
+            self.results = self.model.solve_model()
             if self.dt is None:
-                self.create_table(results)
+                self.create_table(self.results)
             else:
-                self.update_table(results)
+                self.update_table(self.results)
 
     def create_table(self, results):
         if results.empty:
-            showinfo(title='No Results', message="We're sorry, but we couldn't find a solution that meets all of the requirements")
+            showinfo(title='No Results',
+                     message="We're sorry, but we couldn't find a solution that meets all of the requirements")
             return
         colors = self.style.colors
         self.dt = Tableview(
@@ -154,15 +154,25 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         self.dt.place(relx=0.5, rely=0.7, anchor='center')
 
         button_retry = ttk.Button(self, text="Try Again", command=self.show_confirmation_dialog)
-        button_retry.place(relx=0.5, rely=.95, anchor='s')
+        button_retry.place(relx=0.35, rely=.95, anchor='s')
+
+        button_download = ttk.Button(self, text="Download", command=self.download_results)
+        button_download.place(relx=0.65, rely=.95, anchor='s')
+
+    def download_results(self):
+        path = f"{self.config_reader.get('files', 'output_file')}.xlsx"
+        self.results.to_excel(path, index=False)
+        showinfo(title='Download Successful', message=f"Results can be found at {path}")
 
     def update_table(self, results):
         if results.empty:
-            showinfo(title='No Results', message="We're sorry, but we couldn't find a solution that meets all of the requirements")
+            showinfo(title='No Results',
+                     message="We're sorry, but we couldn't find a solution that meets all of the requirements")
             return
         self.dt.delete_rows()
         [self.dt.insert_row(values=row.tolist()) for index, row in results.iterrows()]
         self.dt.load_table_data(clear_filters=True)
+        self.dt.view.selection_remove(self.dt.view.selection())
 
     def select_row(self, tree):
         tree.selection_toggle(tree.focus())
@@ -173,8 +183,8 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
                          for val in (self.dt.view.item(item)["values"] for item in selected_items)]
 
         self.model.add_custom_constraints(selected_rows)
-        results = self.model.solve_model()
-        self.update_table(results)
+        self.results = self.model.solve_model()
+        self.update_table(self.results)
 
     def show_confirmation_dialog(self):
         answer = messagebox.askyesno("Confirmation", "Are you sure you want to proceed?")
@@ -205,7 +215,6 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
             self.data_path.set(data_file)
             return True
         return False
-
 
 
 # Let the window wait for any events
