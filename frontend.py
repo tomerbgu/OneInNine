@@ -58,15 +58,20 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         self.config(background="white")
         self.model = None
         self.dt = None
+
+        style = ttk.Style()
+        # Configure the style to increase the padding around the label
+        style.configure("LabelSize.TLabel", padding=(0, 35))
+
         # Create a File Explorer label
         # labelframe = ttk.Label(self, text='dddd', bootstyle='secondary')
-        self.label_file_explorer_calendar = ttk.Label(self, text="Calendar", background="#cdfeec")
+        self.label_file_explorer_calendar = ttk.Label(self, text="Calendar", background="#cdfeec", style="LabelSize.TLabel", width=120, anchor="center")
         button_explore_calendar = ttk.Button(self, text="Browse Files",
                                              command=lambda: self.browseFiles(self.label_file_explorer_calendar),
                                              bootstyle="success-outline")
 
         # labelframe2 = ttk.Labelframe(self, text='My Labelframe', bootstyle='secondary')
-        self.label_file_explorer_data = ttk.Label(self, text="Data", background="#cdfeec")
+        self.label_file_explorer_data = ttk.Label(self, text="Data", background="#cdfeec", style="LabelSize.TLabel", width=120, anchor="center")
         button_explore_data = ttk.Button(self, text="Browse Files",
                                          command=lambda: self.browseFiles(self.label_file_explorer_data),
                                          bootstyle="success-outline")
