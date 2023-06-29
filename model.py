@@ -121,15 +121,14 @@ class Model():
 
         # Constraint (9.2)
         for i in self.org_num:
-            for j in self.total_volunteers:
-                for d in self.days:
-                    for s in self.slots:
-                        hour = self.time_slots[s]
-
-                        # because the excel include hours and not slots, we transform the slots into hours values
-                        if (d, hour) not in [(self.org_data[i]["first_date"], self.org_data[i]["first_time"]),
-                                             (self.org_data[i]["second_date"], self.org_data[i]["second_time"]),
-                                             (self.org_data[i]["third_date"], self.org_data[i]["third_time"])]:
+            for d in self.days:
+                for s in self.slots:
+                    hour = self.time_slots[s]
+                    # because the excel include hours and not slots, we transform the slots into hours values
+                    if (d, hour) not in [(self.org_data[i]["first_date"], self.org_data[i]["first_time"]),
+                                         (self.org_data[i]["second_date"], self.org_data[i]["second_time"]),
+                                         (self.org_data[i]["third_date"], self.org_data[i]["third_time"])]:
+                        for j in self.total_volunteers:
                             self.model += (
                                 self.x[(i, j, d, s)] - 0 == 0,
                                 "constraint_9.2_" + str(i) + "_" + str(j) + "_" + str(d) + "_" + str(s))
@@ -178,32 +177,32 @@ class Model():
                 )
 
         # Constraint (7)
-        for j in self.lec_num:
-            for d in self.days:
-                for i in self.org_num:
-                    if self.org_data[i]["is_workshop"] == 0:
+        for i in self.org_num:
+            if self.org_data[i]["is_workshop"] == 0:
+                for j in self.lec_num:
+                    for d in self.days:
                         for s in self.slots:
                             self.model += (self.x[(i, j, d, s)] <= 1 - pulp.lpSum(
                                 [self.x[(k, j, d, t)] for t in range(s + 1, min(s + 6, 42)) for k in self.org_num if k != i]),
                                       "constraint_7_" + str(i) + "_" + str(j) + "_" + str(d) + "_" + str(s))
 
         # Constraint (8)
-        for j in self.guide_num:
-            for i in self.org_num:
-                if self.org_data[i]["is_workshop"] == 1:
+        for i in self.org_num:
+            if self.org_data[i]["is_workshop"] == 1:
+                for j in self.guide_num:
                     for d in self.days:
                         for s in self.slots:
-                            # self.model += (x[(i,j,d,s)] <= 1 - pulp.lpSum([x[(i,j,d,t)] for t in range(s+1, s+10)]), "constraint_6_" + str(j) + "_" + str(i) + "_" + str(d) + "_" + str(s))
                             self.model += (
                                 self.x[(i, j, d, s)] <= 1 - pulp.lpSum([self.x[(i, j, d, t)] for t in range(s + 1, min(s + 10, 42))]),
                                 f"constraint_8_{j}_{i}_{d}_{s}")
 
         # Constraint (9) - Availability
-        for i in self.org_num:
-            for j in self.total_volunteers:
-                for d in self.days:
-                    for s in self.slots:
-                        self.model += (self.x[(i, j, d, s)] <= self.is_available(self.availability_df, j, d, s),
+        for j in self.total_volunteers:
+            for d in self.days:
+                for s in self.slots:
+                    val = self.is_available(j, d, s)
+                    for i in self.org_num:
+                        self.model += (self.x[(i, j, d, s)] <= val,
                                   "constraint_9_" + str(i) + "_" + str(j) + "_" + str(d) + "_" + str(s))
 
         # Constraint (9.1)
@@ -318,12 +317,12 @@ class Model():
         print("Finished Calculations")
         return results_df
 
-    def is_available(self, availability_df, lecturer_index, day, time_slot):
+    def is_available(self, lecturer_index, day, time_slot):
         # function needs to return 0 if not available, 1 otherwise
-        filtered_availability_df = availability_df[(availability_df['id'] == str(lecturer_index)) &
-                                                   (availability_df['day'] == day) &
-                                                   (availability_df['From_index'] <= time_slot) &
-                                                   (availability_df['Until_index'] >= time_slot)]
+        filtered_availability_df = self.availability_df[(self.availability_df['id'] == str(lecturer_index)) &
+                                                   (self.availability_df['day'] == day) &
+                                                   (self.availability_df['From_index'] <= time_slot) &
+                                                   (self.availability_df['Until_index'] >= time_slot)]
         if filtered_availability_df.empty:
             return 1
         else:
