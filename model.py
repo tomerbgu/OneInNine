@@ -21,7 +21,7 @@ class Model():
         data_path = resource_path(f'data/{self.config.get("files", "data_file")}')
         dist_path = resource_path(f'data/{self.config.get("files", "distances")}')
 
-        # cij_creator.main()
+        cij_creator.main()
         cij_matrix = pd.read_csv(cij_path, index_col=0)  # Assuming the row headers are in the first column
 
         # cij_matrix.columns = cij_matrix.columns.astype(int)
