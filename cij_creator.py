@@ -95,10 +95,11 @@ def main():
     config = configparser.ConfigParser()
     config.read('config.ini')
     data_path = resource_path(f"data/{config.get('files', 'data_file')}")
+    etn_path = resource_path(f"{config.get('files', 'etn_matrix')}")
 
-    etn_hard = pd.read_excel(data_path, sheet_name='etn_matrix_hard')
+    etn_hard = pd.read_excel(etn_path, sheet_name='etn_matrix_hard')
     etn_hard.set_index("Etn", inplace=True)
-    etn_soft = pd.read_excel(data_path, sheet_name='etn_matrix_soft')
+    etn_soft = pd.read_excel(etn_path, sheet_name='etn_matrix_soft')
     etn_soft.set_index("Etn", inplace=True)
 
     # get language
@@ -117,7 +118,7 @@ def main():
     distances.to_csv(resource_path(f"data/{config.get('files', 'distances')}"), encoding='utf-8-sig')
     distances['val'] = distances['Seconds'].apply(lambda x: 10 if int(x) <= 1800 else 5 if 1800 < int(x) <= 2700 else 1)
 
-    output_table = pd.DataFrame(columns=orgs['id'])
+    output_table = pd.DataFrame(columns=orgs['org_name'])
 
     for _, lecturer in lecturers.iterrows():
         lecturer_values = []  # List to store calculated values for each lecturer
@@ -126,7 +127,7 @@ def main():
             value = calc_cij(etn_hard, etn_soft, lecturer, org, distances)  # Calculate the value using my_func
             lecturer_values.append(value)
 
-        output_table.loc[lecturer['id']] = lecturer_values
+        output_table.loc[lecturer['full_name']] = lecturer_values
     output_table.to_csv(resource_path(f"data/{config.get('files', 'cij_matrix')}"))
 
 

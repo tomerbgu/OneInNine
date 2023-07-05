@@ -21,21 +21,21 @@ class Model():
         data_path = resource_path(f'data/{self.config.get("files", "data_file")}')
         dist_path = resource_path(f'data/{self.config.get("files", "distances")}')
 
-        cij_creator.main()
+        # cij_creator.main()
         cij_matrix = pd.read_csv(cij_path, index_col=0)  # Assuming the row headers are in the first column
 
-        cij_matrix.columns = cij_matrix.columns.astype(int)
-        cij_matrix.index = cij_matrix.index.astype(int)
+        # cij_matrix.columns = cij_matrix.columns.astype(int)
+        # cij_matrix.index = cij_matrix.index.astype(int)
         c = {(i, j): cij_matrix.loc[j, i] for i in cij_matrix.columns for j in cij_matrix.index}
 
-        self.lecturers = pd.read_excel(data_path, sheet_name="lecturer_data")
-        self.lecturers.set_index('id', inplace=True)
+        self.lecturers = pd.read_excel(data_path, sheet_name="lecturer_data", index_col=0)
+        # self.lecturers.set_index('id', inplace=True)
         self.lecturers['position'] = self.lecturers['position'].apply(
             lambda x: x.split(','))  # to allow multiple roles per person
         self.lec_data = self.lecturers.to_dict(orient='index')
 
-        self.organizations = pd.read_excel(data_path, sheet_name="org_data")
-        self.organizations.set_index('id', inplace=True)
+        self.organizations = pd.read_excel(data_path, sheet_name="org_data", index_col=0)
+        # self.organizations.set_index('id', inplace=True)
         for d in ["first_date", "second_date", "third_date"]:
             self.organizations[d].astype(int)
         for h in ["first_time", "second_time", "third_time"]:
@@ -83,14 +83,14 @@ class Model():
         calendar_data_path = resource_path(f'data/{self.config.get("files", "calendar_file")}')
         workbook = load_workbook(calendar_data_path)
         sheet_names = workbook.sheetnames
-        illegal_sheet_names = ['OCTOBER', 'Slots']
+        illegal_sheet_names = ['Slots']
         self.availability_df = pd.DataFrame()
         for sheet_name in set(sheet_names) - set(illegal_sheet_names):
 
             lect_ava = pd.read_excel(calendar_data_path, sheet_name=sheet_name)
-            sheet_id = sheet_name.split('-', 1)[0]
-            sheet_name = sheet_name.split('-', 1)[1].strip()
-            lect_ava['id'] = sheet_id
+            # sheet_id = sheet_name.split('-', 1)[0]
+            # sheet_name = sheet_name.split('-', 1)[1].strip()
+            # lect_ava['id'] = sheet_id
             lect_ava['Name'] = sheet_name
             try:
                 lect_ava['day'] = lect_ava['Date'].dt.strftime('%Y-%m-%d').apply(
@@ -299,27 +299,25 @@ class Model():
         # Iterate over the self.indices_x and retrieve the values
         for item in self.indices_x:
             if self.x[item].varValue != 0.0:
-                org_id, volunteer_id, day, slot = item
-                organization_name = self.org_data[org_id]['org_name']
-                volunteer_name = self.lec_data[volunteer_id]['full_name']
+                org, volunteer, day, slot = item
                 day_str = f"{day}/10/{self.current_year}"
                 Start_time = self.time_slots[slot]
-                results_df = pd.concat([results_df, pd.DataFrame({'Organization': [organization_name],
-                                                                  'Volunteer': [volunteer_name],
+                results_df = pd.concat([results_df, pd.DataFrame({'Organization': [org],
+                                                                  'Volunteer': [volunteer],
                                                                   'Date': [day_str],
                                                                   'Start Time': [Start_time],
                                                                   'End Time': [self.time_slots[slot + (
-                                                                      8 if self.org_data[org_id]['is_workshop'] == 1 else 4)]],
-                                                                  'Location': [self.org_data[org_id]['address']],
-                                                                  'Type': 'Workshop' if self.org_data[org_id][
+                                                                      8 if self.org_data[org]['is_workshop'] == 1 else 4)]],
+                                                                  'Location': [self.org_data[org]['address']],
+                                                                  'Type': 'Workshop' if self.org_data[org][
                                                                                             'is_workshop'] == 1 else 'Lecture'})])
 
         print("Finished Calculations")
         return results_df
 
-    def is_available(self, lecturer_index, day, time_slot):
+    def is_available(self, lecturer, day, time_slot):
         # function needs to return 0 if not available, 1 otherwise
-        filtered_availability_df = self.availability_df[(self.availability_df['id'] == str(lecturer_index)) &
+        filtered_availability_df = self.availability_df[(self.availability_df['Name'] == lecturer) &
                                                    (self.availability_df['day'] == day) &
                                                    (self.availability_df['From_index'] <= time_slot) &
                                                    (self.availability_df['Until_index'] >= time_slot)]
@@ -330,8 +328,8 @@ class Model():
 
     def add_custom_constraints(self, constraints):
         for entry in constraints:
-            i = self.organizations.loc[self.organizations['org_name']==entry["org"]].index[0]
-            j = self.lecturers.loc[self.lecturers['full_name']==entry["lec"]].index[0]
+            i = entry["org"]
+            j = entry["lec"]
             d = int(entry['date'].split('/')[0])
             s = self.inv_time_slots[entry['slot']]
             self.model += (self.x[(i, j, d, s)] == 0, f"custom_constraint_{i}_{j}_{d}_{s}")
@@ -339,15 +337,9 @@ class Model():
 
 if __name__ == '__main__':
     print("Starting calculation of best way to assign lecturers to organizations")
-    try:
-        model = Model()
-        results_df = model.solve_model()
-        # Save the results to an Excel file
-        print("Saving results to file")
-        results_file = model.config.get('files', 'output_file')
-        results_df.to_excel(f'{results_file}.xlsx', index=False)
-    except Exception as e:
-        print("Error: ", e)
-    finally:
-        print("Finished Calculations: Results can be found in results.xlsx file")
-        input("Press Enter to exit")
+    model = Model()
+    results_df = model.solve_model()
+    # Save the results to an Excel file
+    print("Saving results to file")
+    results_file = model.config.get('files', 'output_file')
+    results_df.to_excel(f'{results_file}.xlsx', index=False)

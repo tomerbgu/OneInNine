@@ -221,10 +221,28 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
             return True
         return False
 
+    # def redirect_output(self):
+    #     class StdoutRedirector:
+    #         def __init__(self, text_widget):
+    #             self.text_widget = text_widget
+    #
+    #         def write(self, message):
+    #             self.text_widget.configure(text=message)
+    #             # self.text_widget.see(ttk.END)  # Auto-scroll to the end
+    #
+    #         def flush(self):
+    #             pass  # Optional: Implement the flush method
+    #
+    #     # Create a text widget to display the output
+    #     output_text = ttk.Label(self, width=50)
+    #     output_text.place(relx=0.5, rely=.95, anchor='s')
+    #
+    #     # Redirect the standard output to the text widget
+    #     sys.stdout = StdoutRedirector(output_text)
 
 # Let the window wait for any events
 if __name__ == "__main__":
     window = PopupWindow()  # themename="superhero"
     enable_high_dpi_awareness(root=window, scaling=1)
-
+    # window.redirect_output()
     window.mainloop()
