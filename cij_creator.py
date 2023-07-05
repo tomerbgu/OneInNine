@@ -21,7 +21,7 @@ def resource_path(relative_path):
 
 
 def calc_cij(etn_hard, etn_soft, lecturer, org, distances):
-    language_match = lecturer['language'] == org['language']
+    language_match = org['language'] in lecturer['language']
     if not language_match:
         return 0
 
@@ -104,7 +104,8 @@ def main():
 
     # get language
     lecturers = pd.read_excel(data_path, sheet_name='lecturer_data')
-    lecturers['features'] = lecturers['features'].apply(lambda x: x.split(','))
+    lecturers['features'] = lecturers['features'].apply(lambda x: [i.strip() for i in x.split(',')])
+    lecturers['language'] = lecturers['language'].apply(lambda x: [i.strip() for i in x.split(',')])
     lecturers['expi'] = lecturers['expi'].astype(int)
 
     orgs = pd.read_excel(data_path, sheet_name='org_data')

@@ -31,7 +31,7 @@ class Model():
         self.lecturers = pd.read_excel(data_path, sheet_name="lecturer_data", index_col=0)
         # self.lecturers.set_index('id', inplace=True)
         self.lecturers['position'] = self.lecturers['position'].apply(
-            lambda x: x.split(','))  # to allow multiple roles per person
+            lambda x: [i.strip() for i in x.split(',')])  # to allow multiple roles per person
         self.lec_data = self.lecturers.to_dict(orient='index')
 
         self.organizations = pd.read_excel(data_path, sheet_name="org_data", index_col=0)
@@ -84,7 +84,7 @@ class Model():
         workbook = load_workbook(calendar_data_path)
         sheet_names = workbook.sheetnames
         illegal_sheet_names = ['Slots']
-        self.availability_df = pd.DataFrame()
+        self.availability_df = pd.DataFrame(columns=['From', 'Until', 'Name', 'day'])
         for sheet_name in set(sheet_names) - set(illegal_sheet_names):
 
             lect_ava = pd.read_excel(calendar_data_path, sheet_name=sheet_name)
@@ -97,7 +97,7 @@ class Model():
                     lambda x: int(x.split('-')[2].lstrip('0')))
                 self.availability_df = pd.concat([self.availability_df, lect_ava])
             except:
-                print(f"no rows for {sheet_name}")
+                pass
 
         self.availability_df['From'] = [time.strftime('%H:%M') for time in self.availability_df['From']]
         self.availability_df['Until'] = [time.strftime('%H:%M') for time in self.availability_df['Until']]
@@ -167,12 +167,12 @@ class Model():
 
             if self.org_data[i]["is_workshop"] == 0:
                 self.model += (
-                    pulp.lpSum([self.x[(i, j, d, s)] for j in self.lec_num for d in available_days for s in available_slots]) == 1,
+                    pulp.lpSum([self.x[(i, j, d, s)] for j in self.lec_num for d in available_days for s in available_slots]) <= 1,
                     "constraint_5_" + str(i) + "_" + str(d)
                 )
             else:
                 self.model += (
-                    pulp.lpSum([self.x[(i, j, d, s)] for j in self.guide_num for d in available_days for s in available_slots]) == 1,
+                    pulp.lpSum([self.x[(i, j, d, s)] for j in self.guide_num for d in available_days for s in available_slots]) <= 1,
                     "constraint_6_" + str(i) + "_" + str(d)
                 )
 
