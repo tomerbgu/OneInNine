@@ -8,7 +8,7 @@ a = Analysis(
     ['frontend.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('matrices_data','matrices_data'), ('config.ini', 'config.ini'), ('image.ico', 'image.ico')],
     hiddenimports=['pulp', 'sys'],
     hookspath=['./hooks_dir'],
     hooksconfig={},
@@ -41,4 +41,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='image.ico'
 )

@@ -27,14 +27,15 @@ class Model():
         c = {(i, j): cij_matrix.loc[j, i] for i in cij_matrix.columns for j in cij_matrix.index}
 
         self.lecturers = pd.read_excel(data_path, sheet_name="lecturer_data", index_col=0)
-        self.lecturers['position'] = self.lecturers['position'].apply(
+        self.lecturers['Position'] = self.lecturers['Position'].apply(
             lambda x: [i.strip() for i in x.split(',')])  # to allow multiple roles per person
+        self.lecturers['Arriving by Car'] = self.lecturers['Arriving by Car'].apply(lambda x: 0 if x=='Yes' else 1)
         self.lec_data = self.lecturers.to_dict(orient='index')
 
         self.organizations = pd.read_excel(data_path, sheet_name="org_data", index_col=0)
-        for d in ["first_date", "second_date", "third_date"]:
+        for d in ["Date (Option 1)", "Date (Option 2)", "Date (Option 3)"]:
             self.organizations[d] = self.organizations[d].dt.date
-        for h in ["first_time", "second_time", "third_time"]:
+        for h in ["Time (Option 1)", "Time (Option 2)", "Time (Option 3)"]:
             self.organizations[h] = [time.strftime('%H:%M') for time in self.organizations[h]]
         self.org_data = self.organizations.to_dict(orient='index')
         self.dist_data = pd.read_csv(dist_path, header=None, names=["from", "to", "meters", "seconds", "val"], skiprows=1)
@@ -42,8 +43,8 @@ class Model():
         # input
         self.org_num = list(self.organizations.index)
         self.total_volunteers = list(self.lecturers.index)
-        self.lec_num = [i for i in self.total_volunteers if 'Lecturer' in self.lecturers.loc[i]['position']]
-        self.guide_num = [i for i in self.total_volunteers if 'Guide' in self.lecturers.loc[i]['position']]
+        self.lec_num = [i for i in self.total_volunteers if 'Lecturer' in self.lecturers.loc[i]['Position']]
+        self.guide_num = [i for i in self.total_volunteers if 'Guide' in self.lecturers.loc[i]['Position']]
         self.days = self.get_all_days()  # 31 days in October
         self.slots = range(1, 42)  # 41 slots of 15 min in a day
 
@@ -119,9 +120,9 @@ class Model():
                 for s in self.slots:
                     hour = self.time_slots[s]
                     # because the excel include hours and not slots, we transform the slots into hours values
-                    if (d, hour) not in [(self.org_data[i]["first_date"], self.org_data[i]["first_time"]),
-                                         (self.org_data[i]["second_date"], self.org_data[i]["second_time"]),
-                                         (self.org_data[i]["third_date"], self.org_data[i]["third_time"])]:
+                    if (d, hour) not in [(self.org_data[i]["Date (Option 1)"], self.org_data[i]["Time (Option 1)"]),
+                                         (self.org_data[i]["Date (Option 2)"], self.org_data[i]["Time (Option 2)"]),
+                                         (self.org_data[i]["Date (Option 3)"], self.org_data[i]["Time (Option 3)"])]:
                         for j in self.total_volunteers:
                             self.model += (
                                 self.x[(i, j, d, s)] - 0 == 0,
@@ -144,7 +145,7 @@ class Model():
         # Constraint (3)- for a specific organization in a specific date- one lecturer will be scheduled
         for d in self.days:
             for i in self.org_num:
-                if self.org_data[i]["is_workshop"] == 0:
+                if self.org_data[i]["Workshop"] == 0:
                     # [org_data["id"]==i] and org_data[org_data["is_workshop"]==0]:
                     self.model += (pulp.lpSum([self.x[(i, j, d, s)] for j in self.lec_num for s in self.slots]) <= 1,
                               "constraint_3_" + str(d) + "_" + str(i))
@@ -154,12 +155,12 @@ class Model():
 
         # Constraint (5) - One lecturer per organization per available date
         for i in self.org_num:
-            available_days = {self.org_data[i]["first_date"], self.org_data[i]["second_date"], self.org_data[i]["third_date"]}
+            available_days = {self.org_data[i]["Date (Option 1)"], self.org_data[i]["Date (Option 2)"], self.org_data[i]["Date (Option 3)"]}
             available_slots = set([slot for slot, time in self.time_slots.items() if
-                                   time in [self.org_data[i]["first_time"], self.org_data[i]["second_time"],
-                                            self.org_data[i]["third_time"]]])
+                                   time in [self.org_data[i]["Time (Option 1)"], self.org_data[i]["Time (Option 2)"],
+                                            self.org_data[i]["Time (Option 3)"]]])
 
-            if self.org_data[i]["is_workshop"] == 0:
+            if self.org_data[i]["Workshop"] == 0:
                 self.model += (
                     pulp.lpSum([self.x[(i, j, d, s)] for j in self.lec_num for d in available_days for s in available_slots]) <= 1,
                     "constraint_5_" + str(i) + "_" + str(d)
@@ -172,7 +173,7 @@ class Model():
 
         # Constraint (7)
         for i in self.org_num:
-            if self.org_data[i]["is_workshop"] == 0:
+            if self.org_data[i]["Workshop"] == 0:
                 for j in self.lec_num:
                     for d in self.days:
                         for s in self.slots:
@@ -182,7 +183,7 @@ class Model():
 
         # Constraint (8)
         for i in self.org_num:
-            if self.org_data[i]["is_workshop"] == 1:
+            if self.org_data[i]["Workshop"] == 1:
                 for j in self.guide_num:
                     for d in self.days:
                         for s in self.slots:
@@ -211,7 +212,7 @@ class Model():
         for j in self.total_volunteers:
             for d in self.days:
                 self.model += (
-                    pulp.lpSum([self.x[(i, j, d, s)] for i in self.org_num for s in self.slots]) <= self.lec_data[j]["vol_limit"] + self.z[(j, d)],
+                    pulp.lpSum([self.x[(i, j, d, s)] for i in self.org_num for s in self.slots]) <= self.lec_data[j]["Max number of activites allowed in a day"] + self.z[(j, d)],
                     "constraint_10_" + str(j) + "_" + str(d))
         # Create a set of valid organization combinations to iterate over
         valid_combinations = [(k, i) for k in self.org_num for i in self.org_num if i != k]
@@ -220,16 +221,16 @@ class Model():
         distances = {}
         availability = {}
         for k, i in valid_combinations:
-            dist = float(self.dist_data.loc[(self.dist_data['from'] == self.org_data[k]["address"]) & (
-                    self.dist_data['to'] == self.org_data[i]["address"]), 'seconds'].values[0])
+            dist = float(self.dist_data.loc[(self.dist_data['from'] == self.org_data[k]["Address"]) & (
+                    self.dist_data['to'] == self.org_data[i]["Address"]), 'seconds'].values[0])
             distances[(k, i)] = dist
             availability[(k, i)] = (
-                {self.org_data[k]["first_date"], self.org_data[k]["second_date"], self.org_data[k]["third_date"]},
-                {self.org_data[i]["first_date"], self.org_data[i]["second_date"], self.org_data[i]["third_date"]},
+                {self.org_data[k]["Date (Option 1)"], self.org_data[k]["Date (Option 2)"], self.org_data[k]["Date (Option 3)"]},
+                {self.org_data[i]["Date (Option 1)"], self.org_data[i]["Date (Option 2)"], self.org_data[i]["Date (Option 3)"]},
                 set([slot for slot, time in self.time_slots.items() if
-                     time in [self.org_data[k]["first_time"], self.org_data[k]["second_time"], self.org_data[k]["third_time"]]]),
+                     time in [self.org_data[k]["Time (Option 1)"], self.org_data[k]["Time (Option 2)"], self.org_data[k]["Time (Option 3)"]]]),
                 set([slot for slot, time in self.time_slots.items() if
-                     time in [self.org_data[i]["first_time"], self.org_data[i]["second_time"], self.org_data[i]["third_time"]]])
+                     time in [self.org_data[i]["Time (Option 1)"], self.org_data[i]["Time (Option 2)"], self.org_data[i]["Time (Option 3)"]]])
             )
 
         # Constraint (11)
@@ -246,7 +247,7 @@ class Model():
 
                             self.model += (
                                 self.f[(i, j, d)] >= self.f[(k, j, d)] + lec_length + 0.5 * float(
-                                    (1 - self.lec_data[j]["mobility"])) * dist
+                                    (1 - self.lec_data[j]["Arriving by Car"])) * dist
                                 + dist - 10000 * (2 - self.x[(k, j, d, o)] - self.x[(i, j, d, s)])
                                 , "constraint_11_" + str(k) + "_" + str(i) + "_" + str(j) + "_" + str(d) + "_" + str(
                                     s) + "_" + str(o)
@@ -294,17 +295,16 @@ class Model():
         for item in self.indices_x:
             if self.x[item].varValue != 0.0:
                 org, volunteer, day, slot = item
-                day_str = f"{day}/10/{self.current_year}"
                 Start_time = self.time_slots[slot]
                 results_df = pd.concat([results_df, pd.DataFrame({'Organization': [org],
                                                                   'Volunteer': [volunteer],
-                                                                  'Date': [day_str],
+                                                                  'Date': [day],
                                                                   'Start Time': [Start_time],
                                                                   'End Time': [self.time_slots[slot + (
-                                                                      8 if self.org_data[org]['is_workshop'] == 1 else 4)]],
-                                                                  'Location': [self.org_data[org]['address']],
+                                                                      8 if self.org_data[org]['Workshop'] == 1 else 4)]],
+                                                                  'Location': [self.org_data[org]['Address']],
                                                                   'Type': 'Workshop' if self.org_data[org][
-                                                                                            'is_workshop'] == 1 else 'Lecture',
+                                                                                            'Workshop'] == 1 else 'Lecture',
                                                                   'Confirmed': 'No'})])
 
         print("Finished Calculations")
@@ -325,7 +325,7 @@ class Model():
         for entry in constraints:
             i = entry["org"]
             j = entry["lec"]
-            d = int(entry['date'].split('/')[0])
+            d = entry['date']
             s = self.inv_time_slots[entry['slot']]
             self.model += (self.x[(i, j, d, s)] == 0, f"custom_constraint_{i}_{j}_{d}_{s}")
 
@@ -333,13 +333,13 @@ class Model():
         for entry in constraints:
             i = entry["org"]
             j = entry["lec"]
-            d = int(entry['date'].split('/')[0])
+            d = entry['date'].date()
             s = self.inv_time_slots[entry['slot']]
             self.model += (self.x[(i, j, d, s)] == 1, f"custom_constraint_{i}_{j}_{d}_{s}")
 
     def get_all_days(self):
         date_set = set()
-        for d in ["first_date", "second_date", "third_date"]:
+        for d in ["Date (Option 1)", "Date (Option 2)", "Date (Option 3)"]:
             date_set.update(self.organizations[d])
 
         return date_set

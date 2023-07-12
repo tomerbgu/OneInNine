@@ -51,7 +51,7 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
     def __init__(self, **args):
         super().__init__(**args)
         self.config_reader = configparser.ConfigParser()
-        self.config_reader.read('config.ini')
+        self.config_reader.read(resource_path('config.ini'))
 
         self.title('One in Nine')
         self.geometry("900x700")
@@ -220,7 +220,8 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         self.file_exists = False
 
     def check_if_files_exist(self):
-
+        if hasattr(sys, "_MEIPASS"):
+            return False
         calendar_file = resource_path(f"data/{self.config_reader.get('files', 'calendar_file')}")
         data_file = resource_path(f"data/{self.config_reader.get('files', 'data_file')}")
 
@@ -280,7 +281,8 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         self.config(menu=file_menu)
 
     def add_match_constraints(self):
-        data = [self.dt.tablerows[i].values for i in range(len(self.dt.tablerows)) if self.dt.tablerows[i].values[-1]=='Yes']
+        data = [{"org": self.dt.tablerows[i].values[0], "lec": self.dt.tablerows[i].values[1], "date": self.dt.tablerows[i].values[2], "slot": self.dt.tablerows[i].values[3]}
+                for i in range(len(self.dt.tablerows)) if self.dt.tablerows[i].values[-1]=='Yes']
         if len(data) > 0:
             self.model.add_custom_already_matched_constraints(data)
 
@@ -310,5 +312,7 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
 if __name__ == "__main__":
     window = PopupWindow()  # themename="superhero"
     enable_high_dpi_awareness(root=window, scaling=1)
+    window.iconbitmap(resource_path("image.ico"))
+
     # window.redirect_output()
     window.mainloop()

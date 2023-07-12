@@ -21,19 +21,20 @@ def resource_path(relative_path):
 
 
 def calc_cij(etn_hard, etn_soft, lecturer, org, distances):
-    language_match = org['language'] in lecturer['language']
+    language_match = org['Language'] in lecturer['Language']
     if not language_match:
         return 0
 
     is_hard = org['is_hard']
-    hard_match = etn_hard.loc[lecturer['ethnicity']][org['ethnicity']]
-    soft_match = etn_soft.loc[lecturer['ethnicity']][org['ethnicity']]
+    hard_match = etn_hard.loc[lecturer['Ethnicity']][org['Ethnicity']]
+    soft_match = etn_soft.loc[lecturer['Ethnicity']][org['Ethnicity']]
     hardness = 65 * (is_hard * hard_match + (1 - is_hard) * soft_match)
-    fti = 10 if org['feature'] in lecturer['features'] else 0
-    exp = 5 * lecturer['expi']
-    row = distances[(distances['From'] == lecturer['address']) & (distances['To'] == org['address'])].reset_index()
+    fti = 10 if org['Organization Type'] in lecturer['Features'] else 0
+    exp = 5 * lecturer['Experience']
+    row = distances[(distances['From'] == lecturer['Address']) & (distances['To'] == org['Address'])].reset_index()
     val = row['val'][0]
-    dis = 30 * val - lecturer['mobility']
+    mob = 0 if lecturer['Arriving by Car']=='Yes' else 1
+    dis = 30 * val - mob
     return hardness + fti + exp + dis
 
 
@@ -94,11 +95,11 @@ def dist(locs):
 def get_distances(config, lecturers, orgs):
     dist_file_path = resource_path(f"{config.get('files', 'distances')}")
     locs = pd.DataFrame()
-    locs['address'] = pd.concat([lecturers['address'], orgs['address']]).drop_duplicates()
+    locs['Address'] = pd.concat([lecturers['Address'], orgs['Address']]).drop_duplicates()
     locs = locs.reset_index()
     if os.path.exists(dist_file_path):
         distances = pd.read_csv(dist_file_path)
-        already_have_dist = locs['address'].isin(distances['From']).all()
+        already_have_dist = locs['Address'].isin(distances['From']).all()
         if already_have_dist:
             print("already have all relevant distances")
             return distances
@@ -106,7 +107,7 @@ def get_distances(config, lecturers, orgs):
 
 def calc_distances(dist_file_path, locs):
     print("calculating new distances")
-    locs[['lat', 'lon']] = locs['address'].apply(get_coordinates).apply(pd.Series)
+    locs[['lat', 'lon']] = locs['Address'].apply(get_coordinates).apply(pd.Series)
     distances = dist(locs)
     distances['val'] = distances['Seconds'].apply(lambda x: 10 if int(x) <= 1800 else 5 if 1800 < int(x) <= 2700 else 1)
     distances.to_csv(dist_file_path, encoding='utf-8-sig')
@@ -127,15 +128,15 @@ def main():
 
     # get language
     lecturers = pd.read_excel(data_path, sheet_name='lecturer_data')
-    lecturers['features'] = lecturers['features'].apply(lambda x: [i.strip() for i in x.split(',')])
-    lecturers['language'] = lecturers['language'].apply(lambda x: [i.strip() for i in x.split(',')])
-    lecturers['expi'] = lecturers['expi'].astype(int)
+    lecturers['Features'] = lecturers['Features'].apply(lambda x: [i.strip() for i in x.split(',')])
+    lecturers['Language'] = lecturers['Language'].apply(lambda x: [i.strip() for i in x.split(',')])
+    lecturers['Experience'] = lecturers['Experience'].astype(int)
 
     orgs = pd.read_excel(data_path, sheet_name='org_data')
-    orgs['is_hard'] = orgs['is_hard'].astype(int)
+    orgs['is_hard'] = orgs["MUST match organization's exact ethnicity"].apply(lambda x: 1 if x=='Yes' else 0)
 
     distances = get_distances(config, lecturers, orgs)
-    output_table = pd.DataFrame(columns=orgs['org_name'])
+    output_table = pd.DataFrame(columns=orgs['Organization Name'])
 
     for _, lecturer in lecturers.iterrows():
         lecturer_values = []  # List to store calculated values for each lecturer
@@ -144,7 +145,7 @@ def main():
             value = calc_cij(etn_hard, etn_soft, lecturer, org, distances)  # Calculate the value using my_func
             lecturer_values.append(value)
 
-        output_table.loc[lecturer['full_name']] = lecturer_values
+        output_table.loc[lecturer['Full Name']] = lecturer_values
     output_table.to_csv(resource_path(f"data/{config.get('files', 'cij_matrix')}"))
 
 
