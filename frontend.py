@@ -3,9 +3,10 @@ import os
 import shutil
 import sys
 from tkinter import *
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, Menu
 from tkinter.messagebox import showinfo
 
+import pandas as pd
 import ttkbootstrap as ttk
 from tkinterdnd2 import *
 from ttkbootstrap.constants import *
@@ -58,6 +59,9 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         self.config(background="white")
         self.model = None
         self.dt = None
+        self.results = None
+
+        self.add_menu()
 
         style = ttk.Style()
         # Configure the style to increase the padding around the label
@@ -110,13 +114,16 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
             self.calendar_path.set(filename)
         elif label_file_explorer == self.label_file_explorer_data:
             self.data_path.set(filename)
+        else:
+            self.results_file.set(filename)
         self.file_exists = False
+        self.model = None
 
     def calculate(self, ):
         if self.calendar_path.get() == '':
-            print("need to choose calendar")
+            showinfo(title='Missing Data', message="need to choose calendar")
         elif self.data_path.get() == '':
-            print("need to choose data")
+            showinfo(title='Missing Data', message="need to choose data")
         else:
             print("copying files")
             create_directory("data")
@@ -128,6 +135,8 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
                                        resource_path(f"data/{self.config_reader.get('files', 'data_file')}"))
             if self.model == None:
                 self.model = Model()
+            if self.dt is not None: #TODO might be wrong condition
+                self.add_match_constraints()
             print("calculating:")
             self.results = self.model.solve_model()
             if self.dt is None:
@@ -183,11 +192,12 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         tree.selection_toggle(tree.focus())
 
     def retry(self):
+        #TODO add warning if hasnt clicked calc yet
         selected_items = self.dt.view.selection()
         selected_rows = [{"org": val[0], "lec": val[1], "date": val[2], "slot": val[3]}
                          for val in (self.dt.view.item(item)["values"] for item in selected_items)]
 
-        self.model.add_custom_constraints(selected_rows)
+        self.model.add_custom_no_match_constraints(selected_rows)
         self.results = self.model.solve_model()
         self.update_table(self.results)
 
@@ -200,12 +210,13 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
 
     def on_drop(self, event):
         # Get the list of files dropped into the window
+        event.widget.configure(text="File Opened: " + event.data)
         if event.widget == self.label_file_explorer_calendar:
-            self.label_file_explorer_calendar.configure(text="File Opened: " + event.data)
             self.calendar_path.set(event.data)
         elif event.widget == self.label_file_explorer_data:
-            self.label_file_explorer_data.configure(text="File Opened: " + event.data)
             self.data_path.set(event.data)
+        elif event.widget == self.results_label:
+            self.results_file.set(event.data)
         self.file_exists = False
 
     def check_if_files_exist(self):
@@ -220,6 +231,59 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
             self.data_path.set(data_file)
             return True
         return False
+
+    def results_file_loader(self):
+        self.popup = Toplevel(self)
+        self.popup.title("Results Loader")
+        self.popup.geometry("450x350")
+        self.popup.attributes('-topmost', 'true')
+
+        self.results_file = StringVar()
+        self.results_label = ttk.Label(self.popup, text="Select Results File", background="#cdfeec",
+                                                      style="LabelSize.TLabel", width=60, anchor="center")
+        button_results = ttk.Button(self.popup, text="Browse Files",
+                                             command=lambda: self.browseFiles(self.results_label),
+                                             bootstyle="success-outline")
+
+
+        self.results_label.drop_target_register(DND_FILES)
+        self.results_label.dnd_bind('<<Drop>>', self.on_drop)
+
+        button_done = ttk.Button(self.popup, text="Load", command=self.load_results,
+                                 bootstyle="success")
+        self.results_label.place(relx=0.5, rely=0.4, anchor='center')
+        button_results.place(relx=0.5, rely=0.6, anchor='center')
+        button_done.place(relx=0.5, rely=0.8, anchor='center')
+
+    def load_results(self):
+        #check that results file not None
+        #load to table
+        #write the V/X stuff to the data
+        if self.results_file.get() == '':
+            showinfo(title='Missing Data', message="need to choose file")
+            return
+        self.results = pd.read_excel(self.results_file.get())
+        if self.dt is None:
+            self.create_table(self.results)
+        else:
+            self.update_table(self.results)
+        self.popup.destroy()
+
+    def add_menu(self):
+        file_menu = Menu(self)
+
+        options_submenu = Menu(file_menu, tearoff=0)
+        options_submenu.add_command(label="Add Previous Results file", command=self.results_file_loader)
+
+        file_menu.add_cascade(label="Options", menu=options_submenu)
+
+        self.config(menu=file_menu)
+
+    def add_match_constraints(self):
+        data = [self.dt.tablerows[i].values for i in range(len(self.dt.tablerows)) if self.dt.tablerows[i].values[-1]=='Yes']
+        if len(data) > 0:
+            self.model.add_custom_already_matched_constraints(data)
+
 
     # def redirect_output(self):
     #     class StdoutRedirector:
@@ -239,6 +303,8 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
     #
     #     # Redirect the standard output to the text widget
     #     sys.stdout = StdoutRedirector(output_text)
+
+
 
 # Let the window wait for any events
 if __name__ == "__main__":

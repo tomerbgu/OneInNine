@@ -26,8 +26,8 @@ def calc_cij(etn_hard, etn_soft, lecturer, org, distances):
         return 0
 
     is_hard = org['is_hard']
-    hard_match = etn_hard.loc[lecturer['enthicity']][org['enthicity']]
-    soft_match = etn_soft.loc[lecturer['enthicity']][org['enthicity']]
+    hard_match = etn_hard.loc[lecturer['ethnicity']][org['ethnicity']]
+    soft_match = etn_soft.loc[lecturer['ethnicity']][org['ethnicity']]
     hardness = 65 * (is_hard * hard_match + (1 - is_hard) * soft_match)
     fti = 10 if org['feature'] in lecturer['features'] else 0
     exp = 5 * lecturer['expi']
@@ -91,6 +91,29 @@ def dist(locs):
     return loc_df
 
 
+def get_distances(config, lecturers, orgs):
+    dist_file_path = resource_path(f"{config.get('files', 'distances')}")
+    locs = pd.DataFrame()
+    locs['address'] = pd.concat([lecturers['address'], orgs['address']]).drop_duplicates()
+    locs = locs.reset_index()
+    if os.path.exists(dist_file_path):
+        distances = pd.read_csv(dist_file_path)
+        already_have_dist = locs['address'].isin(distances['From']).all()
+        if already_have_dist:
+            print("already have all relevant distances")
+            return distances
+    return calc_distances(dist_file_path, locs)
+
+def calc_distances(dist_file_path, locs):
+    print("calculating new distances")
+    locs[['lat', 'lon']] = locs['address'].apply(get_coordinates).apply(pd.Series)
+    distances = dist(locs)
+    distances['val'] = distances['Seconds'].apply(lambda x: 10 if int(x) <= 1800 else 5 if 1800 < int(x) <= 2700 else 1)
+    distances.to_csv(dist_file_path, encoding='utf-8-sig')
+
+    return distances
+
+
 def main():
     config = configparser.ConfigParser()
     config.read('config.ini')
@@ -111,14 +134,7 @@ def main():
     orgs = pd.read_excel(data_path, sheet_name='org_data')
     orgs['is_hard'] = orgs['is_hard'].astype(int)
 
-    locs = pd.DataFrame()
-    locs['address'] = pd.concat([lecturers['address'], orgs['address']]).drop_duplicates()
-    locs = locs.reset_index()
-    locs[['lat', 'lon']] = locs['address'].apply(get_coordinates).apply(pd.Series)
-    distances = dist(locs)
-    distances.to_csv(resource_path(f"data/{config.get('files', 'distances')}"), encoding='utf-8-sig')
-    distances['val'] = distances['Seconds'].apply(lambda x: 10 if int(x) <= 1800 else 5 if 1800 < int(x) <= 2700 else 1)
-
+    distances = get_distances(config, lecturers, orgs)
     output_table = pd.DataFrame(columns=orgs['org_name'])
 
     for _, lecturer in lecturers.iterrows():

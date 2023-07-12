@@ -19,36 +19,32 @@ class Model():
 
         cij_path = resource_path(f'data/{self.config.get("files", "cij_matrix")}')
         data_path = resource_path(f'data/{self.config.get("files", "data_file")}')
-        dist_path = resource_path(f'data/{self.config.get("files", "distances")}')
+        dist_path = resource_path(f'{self.config.get("files", "distances")}')
 
         cij_creator.main()
         cij_matrix = pd.read_csv(cij_path, index_col=0)  # Assuming the row headers are in the first column
 
-        # cij_matrix.columns = cij_matrix.columns.astype(int)
-        # cij_matrix.index = cij_matrix.index.astype(int)
         c = {(i, j): cij_matrix.loc[j, i] for i in cij_matrix.columns for j in cij_matrix.index}
 
         self.lecturers = pd.read_excel(data_path, sheet_name="lecturer_data", index_col=0)
-        # self.lecturers.set_index('id', inplace=True)
         self.lecturers['position'] = self.lecturers['position'].apply(
             lambda x: [i.strip() for i in x.split(',')])  # to allow multiple roles per person
         self.lec_data = self.lecturers.to_dict(orient='index')
 
         self.organizations = pd.read_excel(data_path, sheet_name="org_data", index_col=0)
-        # self.organizations.set_index('id', inplace=True)
         for d in ["first_date", "second_date", "third_date"]:
-            self.organizations[d].astype(int)
+            self.organizations[d] = self.organizations[d].dt.date
         for h in ["first_time", "second_time", "third_time"]:
             self.organizations[h] = [time.strftime('%H:%M') for time in self.organizations[h]]
         self.org_data = self.organizations.to_dict(orient='index')
-        self.dist_data = pd.read_csv(dist_path, header=None, names=["from", "to", "meters", "seconds"])
+        self.dist_data = pd.read_csv(dist_path, header=None, names=["from", "to", "meters", "seconds", "val"], skiprows=1)
 
         # input
         self.org_num = list(self.organizations.index)
         self.total_volunteers = list(self.lecturers.index)
         self.lec_num = [i for i in self.total_volunteers if 'Lecturer' in self.lecturers.loc[i]['position']]
         self.guide_num = [i for i in self.total_volunteers if 'Guide' in self.lecturers.loc[i]['position']]
-        self.days = range(1, 32)  # 31 days in October
+        self.days = self.get_all_days()  # 31 days in October
         self.slots = range(1, 42)  # 41 slots of 15 min in a day
 
         # parameters
@@ -63,14 +59,13 @@ class Model():
         self.indices_c = [(i, j) for i in self.org_num for j in self.total_volunteers]
 
         # converting slots to hours for a constraint
-        self.num_slots = 41
         start_hour = 8
         slot_interval = 15
         self.time_slots = {}
         self.inv_time_slots = dict()
         hour = start_hour
         minute = 0
-        for slot in range(1, self.num_slots + 1):
+        for slot in self.slots:
             if minute == 60:
                 hour += 1
                 minute = 0
@@ -93,8 +88,7 @@ class Model():
             # lect_ava['id'] = sheet_id
             lect_ava['Name'] = sheet_name
             try:
-                lect_ava['day'] = lect_ava['Date'].dt.strftime('%Y-%m-%d').apply(
-                    lambda x: int(x.split('-')[2].lstrip('0')))
+                lect_ava['day'] = lect_ava['Date'].dt.date
                 self.availability_df = pd.concat([self.availability_df, lect_ava])
             except:
                 pass
@@ -294,7 +288,7 @@ class Model():
 
         # Create a DataFrame to store the results
         results_df = pd.DataFrame(
-            columns=['Organization', 'Volunteer', 'Date', 'Start Time', 'End Time', 'Location', 'Type'])
+            columns=['Organization', 'Volunteer', 'Date', 'Start Time', 'End Time', 'Location', 'Type', 'Confirmed'])
 
         # Iterate over the self.indices_x and retrieve the values
         for item in self.indices_x:
@@ -310,7 +304,8 @@ class Model():
                                                                       8 if self.org_data[org]['is_workshop'] == 1 else 4)]],
                                                                   'Location': [self.org_data[org]['address']],
                                                                   'Type': 'Workshop' if self.org_data[org][
-                                                                                            'is_workshop'] == 1 else 'Lecture'})])
+                                                                                            'is_workshop'] == 1 else 'Lecture',
+                                                                  'Confirmed': 'No'})])
 
         print("Finished Calculations")
         return results_df
@@ -322,17 +317,33 @@ class Model():
                                                    (self.availability_df['From_index'] <= time_slot) &
                                                    (self.availability_df['Until_index'] >= time_slot)]
         if filtered_availability_df.empty:
-            return 1
-        else:
             return 0
+        else:
+            return 1
 
-    def add_custom_constraints(self, constraints):
+    def add_custom_no_match_constraints(self, constraints):
         for entry in constraints:
             i = entry["org"]
             j = entry["lec"]
             d = int(entry['date'].split('/')[0])
             s = self.inv_time_slots[entry['slot']]
             self.model += (self.x[(i, j, d, s)] == 0, f"custom_constraint_{i}_{j}_{d}_{s}")
+
+    def add_custom_already_matched_constraints(self, constraints):
+        for entry in constraints:
+            i = entry["org"]
+            j = entry["lec"]
+            d = int(entry['date'].split('/')[0])
+            s = self.inv_time_slots[entry['slot']]
+            self.model += (self.x[(i, j, d, s)] == 1, f"custom_constraint_{i}_{j}_{d}_{s}")
+
+    def get_all_days(self):
+        date_set = set()
+        for d in ["first_date", "second_date", "third_date"]:
+            date_set.update(self.organizations[d])
+
+        return date_set
+
 
 
 if __name__ == '__main__':
