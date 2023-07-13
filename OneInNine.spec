@@ -1,15 +1,20 @@
-# -*- mode: python ; coding: utf-8 -*-
-
+import sys
+import os
 
 block_cipher = None
 
+def get_pulp_path():
+    import pulp
+    return pulp.__path__[0]
+
+path_main = os.path.dirname(os.path.abspath(sys.argv[2]))
 
 a = Analysis(
     ['frontend.py'],
-    pathex=[],
+    pathex=[path_main],
     binaries=[],
-    datas=[('matrices_data','matrices_data'), ('config.ini', 'config.ini'), ('image.ico', 'image.ico')],
-    hiddenimports=['pulp', 'sys'],
+    datas=[('matrices_data','matrices_data'), ('config.ini', '.'), ('image.ico', '.')],
+    hiddenimports=['pulp,sys'],
     hookspath=['./hooks_dir'],
     hooksconfig={},
     runtime_hooks=[],
@@ -19,6 +24,8 @@ a = Analysis(
     cipher=block_cipher,
     noarchive=False,
 )
+a.datas += Tree(get_pulp_path(), prefix='pulp', excludes=["*.pyc"])
+
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
@@ -41,5 +48,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='image.ico'
+    icon='image.ico',
 )

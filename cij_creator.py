@@ -63,12 +63,12 @@ def query_google_map(lat1, long1, lat2, long2):
     return a
 
 
-@retry((GeocoderTimedOut, socket.timeout, urllib.error.URLError), tries=3, delay=2)
+# @retry((GeocoderTimedOut, socket.timeout, urllib.error.URLError), tries=3, delay=2)
 def dist(locs):
     loc_df = pd.DataFrame(columns=['From', 'To', 'Meters', 'Seconds'])
     lon = locs['lon']
     lat = locs['lat']
-    station_id = locs['address']
+    station_id = locs['Address']
 
     new_rows = []  # Collect new rows in a list
 
@@ -117,7 +117,7 @@ def calc_distances(dist_file_path, locs):
 
 def main():
     config = configparser.ConfigParser()
-    config.read('config.ini')
+    config.read(resource_path('config.ini'))
     data_path = resource_path(f"data/{config.get('files', 'data_file')}")
     etn_path = resource_path(f"{config.get('files', 'etn_matrix')}")
 

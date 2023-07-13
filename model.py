@@ -14,16 +14,13 @@ from cij_creator import resource_path
 class Model():
     def __init__(self):
         self.config = configparser.ConfigParser()
-        self.config.read('config.ini')
-
+        self.config.read(resource_path('config.ini'))
 
         cij_path = resource_path(f'data/{self.config.get("files", "cij_matrix")}')
         data_path = resource_path(f'data/{self.config.get("files", "data_file")}')
         dist_path = resource_path(f'{self.config.get("files", "distances")}')
-
         cij_creator.main()
         cij_matrix = pd.read_csv(cij_path, index_col=0)  # Assuming the row headers are in the first column
-
         c = {(i, j): cij_matrix.loc[j, i] for i in cij_matrix.columns for j in cij_matrix.index}
 
         self.lecturers = pd.read_excel(data_path, sheet_name="lecturer_data", index_col=0)
@@ -281,7 +278,6 @@ class Model():
             for item in self.indices_f:
                 if (self.f[item].varValue != 0.0):
                     print("f-" + str(item), self.f[item].varValue)
-
         else:
             print("Optimization problem did not find an optimal solution.")
             return None

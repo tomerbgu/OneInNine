@@ -17,8 +17,8 @@ from model import Model
 
 
 def create_directory(directory):
-    if not os.path.exists(resource_path(directory)):
-        os.makedirs(resource_path(directory))
+    if not os.path.exists(directory):
+        os.makedirs(directory)
         print("Directory created:", directory)
     else:
         print("Directory already exists:", directory)
@@ -69,13 +69,15 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
 
         # Create a File Explorer label
         # labelframe = ttk.Label(self, text='dddd', bootstyle='secondary')
-        self.label_file_explorer_calendar = ttk.Label(self, text="Calendar", background="#cdfeec", style="LabelSize.TLabel", width=120, anchor="center")
+        self.label_file_explorer_calendar = ttk.Label(self, text="Calendar", background="#cdfeec",
+                                                      style="LabelSize.TLabel", width=120, anchor="center")
         button_explore_calendar = ttk.Button(self, text="Browse Files",
                                              command=lambda: self.browseFiles(self.label_file_explorer_calendar),
                                              bootstyle="success-outline")
 
         # labelframe2 = ttk.Labelframe(self, text='My Labelframe', bootstyle='secondary')
-        self.label_file_explorer_data = ttk.Label(self, text="Data", background="#cdfeec", style="LabelSize.TLabel", width=120, anchor="center")
+        self.label_file_explorer_data = ttk.Label(self, text="Data", background="#cdfeec", style="LabelSize.TLabel",
+                                                  width=120, anchor="center")
         button_explore_data = ttk.Button(self, text="Browse Files",
                                          command=lambda: self.browseFiles(self.label_file_explorer_data),
                                          bootstyle="success-outline")
@@ -126,7 +128,7 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
             showinfo(title='Missing Data', message="need to choose data")
         else:
             print("copying files")
-            create_directory("data")
+            create_directory(resource_path("data"))
             if not self.file_exists:
                 clear_directory(resource_path("data"))
                 copy_file_to_directory(self.calendar_path.get(),
@@ -135,10 +137,14 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
                                        resource_path(f"data/{self.config_reader.get('files', 'data_file')}"))
             if self.model == None:
                 self.model = Model()
-            if self.dt is not None: #TODO might be wrong condition
+            if self.dt is not None:  # TODO might be wrong condition
                 self.add_match_constraints()
             print("calculating:")
-            self.results = self.model.solve_model()
+            try:
+                self.results = self.model.solve_model()
+            except Exception as e:
+                showinfo(title='Error',
+                         message=f"Sorry, something went wrong, Please check that data is valid\n\nIf problem persists - Contact system admins\n\n{e}")
             if self.dt is None:
                 self.create_table(self.results)
             else:
@@ -192,7 +198,7 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         tree.selection_toggle(tree.focus())
 
     def retry(self):
-        #TODO add warning if hasnt clicked calc yet
+        # TODO add warning if hasnt clicked calc yet
         selected_items = self.dt.view.selection()
         selected_rows = [{"org": val[0], "lec": val[1], "date": val[2], "slot": val[3]}
                          for val in (self.dt.view.item(item)["values"] for item in selected_items)]
@@ -220,8 +226,8 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         self.file_exists = False
 
     def check_if_files_exist(self):
-        if hasattr(sys, "_MEIPASS"):
-            return False
+        # if hasattr(sys, "_MEIPASS"):
+        #     return False
         calendar_file = resource_path(f"data/{self.config_reader.get('files', 'calendar_file')}")
         data_file = resource_path(f"data/{self.config_reader.get('files', 'data_file')}")
 
@@ -241,11 +247,10 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
 
         self.results_file = StringVar()
         self.results_label = ttk.Label(self.popup, text="Select Results File", background="#cdfeec",
-                                                      style="LabelSize.TLabel", width=60, anchor="center")
+                                       style="LabelSize.TLabel", width=60, anchor="center")
         button_results = ttk.Button(self.popup, text="Browse Files",
-                                             command=lambda: self.browseFiles(self.results_label),
-                                             bootstyle="success-outline")
-
+                                    command=lambda: self.browseFiles(self.results_label),
+                                    bootstyle="success-outline")
 
         self.results_label.drop_target_register(DND_FILES)
         self.results_label.dnd_bind('<<Drop>>', self.on_drop)
@@ -257,9 +262,9 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         button_done.place(relx=0.5, rely=0.8, anchor='center')
 
     def load_results(self):
-        #check that results file not None
-        #load to table
-        #write the V/X stuff to the data
+        # check that results file not None
+        # load to table
+        # write the V/X stuff to the data
         if self.results_file.get() == '':
             showinfo(title='Missing Data', message="need to choose file")
             return
@@ -281,38 +286,37 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         self.config(menu=file_menu)
 
     def add_match_constraints(self):
-        data = [{"org": self.dt.tablerows[i].values[0], "lec": self.dt.tablerows[i].values[1], "date": self.dt.tablerows[i].values[2], "slot": self.dt.tablerows[i].values[3]}
-                for i in range(len(self.dt.tablerows)) if self.dt.tablerows[i].values[-1]=='Yes']
+        data = [{"org": self.dt.tablerows[i].values[0], "lec": self.dt.tablerows[i].values[1],
+                 "date": self.dt.tablerows[i].values[2], "slot": self.dt.tablerows[i].values[3]}
+                for i in range(len(self.dt.tablerows)) if self.dt.tablerows[i].values[-1] == 'Yes']
         if len(data) > 0:
             self.model.add_custom_already_matched_constraints(data)
 
+    def redirect_output(self):
+        class StdoutRedirector:
+            def __init__(self, text_widget):
+                self.text_widget = text_widget
 
-    # def redirect_output(self):
-    #     class StdoutRedirector:
-    #         def __init__(self, text_widget):
-    #             self.text_widget = text_widget
-    #
-    #         def write(self, message):
-    #             self.text_widget.configure(text=message)
-    #             # self.text_widget.see(ttk.END)  # Auto-scroll to the end
-    #
-    #         def flush(self):
-    #             pass  # Optional: Implement the flush method
-    #
-    #     # Create a text widget to display the output
-    #     output_text = ttk.Label(self, width=50)
-    #     output_text.place(relx=0.5, rely=.95, anchor='s')
-    #
-    #     # Redirect the standard output to the text widget
-    #     sys.stdout = StdoutRedirector(output_text)
+            def write(self, message):
+                self.text_widget.configure(text=message)
+                # self.text_widget.see(ttk.END)  # Auto-scroll to the end
 
+            def flush(self):
+                pass  # Optional: Implement the flush method
+
+        # Create a text widget to display the output
+        output_text = ttk.Label(self, width=50)
+        output_text.place(relx=0.5, rely=.95, anchor='s')
+
+        # Redirect the standard output to the text widget
+        sys.stdout = StdoutRedirector(output_text)
 
 
 # Let the window wait for any events
 if __name__ == "__main__":
     window = PopupWindow()  # themename="superhero"
     enable_high_dpi_awareness(root=window, scaling=1)
-    window.iconbitmap(resource_path("image.ico"))
+    # window.iconbitmap("image.jpg")
 
     # window.redirect_output()
     window.mainloop()
