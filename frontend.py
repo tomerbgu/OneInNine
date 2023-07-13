@@ -113,11 +113,12 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         label_file_explorer.configure(text="File Opened: " + filename)
         if label_file_explorer == self.label_file_explorer_calendar:
             self.calendar_path.set(filename)
+            self.file_exists = False
         elif label_file_explorer == self.label_file_explorer_data:
             self.data_path.set(filename)
+            self.file_exists = False
         else:
             self.results_file.set(filename)
-        self.file_exists = False
         self.model = None
 
     def calculate(self, ):
@@ -218,15 +219,16 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         event.widget.configure(text="File Opened: " + event.data)
         if event.widget == self.label_file_explorer_calendar:
             self.calendar_path.set(event.data)
+            self.file_exists = False
         elif event.widget == self.label_file_explorer_data:
             self.data_path.set(event.data)
+            self.file_exists = False
         elif event.widget == self.results_label:
             self.results_file.set(event.data)
-        self.file_exists = False
 
     def check_if_files_exist(self):
-        # if hasattr(sys, "_MEIPASS"):
-        #     return False
+        if hasattr(sys, "_MEIPASS"):
+            return False
         calendar_file = resource_path(f"data/{self.config_reader.get('files', 'calendar_file')}")
         data_file = resource_path(f"data/{self.config_reader.get('files', 'data_file')}")
 
@@ -268,6 +270,7 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
             showinfo(title='Missing Data', message="need to choose file")
             return
         self.results = pd.read_excel(self.results_file.get())
+        self.results['Date'] = self.results['Date'].dt.date
         if self.dt is None:
             self.create_table(self.results)
         else:

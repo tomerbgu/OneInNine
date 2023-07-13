@@ -13,6 +13,7 @@ from cij_creator import resource_path
 
 class Model():
     def __init__(self):
+        self.prev_results = None
         self.config = configparser.ConfigParser()
         self.config.read(resource_path('config.ini'))
 
@@ -301,7 +302,7 @@ class Model():
                                                                   'Location': [self.org_data[org]['Address']],
                                                                   'Type': 'Workshop' if self.org_data[org][
                                                                                             'Workshop'] == 1 else 'Lecture',
-                                                                  'Confirmed': 'No'})])
+                                                                  'Confirmed': 'No' if self.prev_results is None else 'Yes' if org in [entry["org"] for entry in self.prev_results] else 'No'})])
 
         print("Finished Calculations")
         return results_df
@@ -326,10 +327,11 @@ class Model():
             self.model += (self.x[(i, j, d, s)] == 0, f"custom_constraint_{i}_{j}_{d}_{s}")
 
     def add_custom_already_matched_constraints(self, constraints):
+        self.prev_results = constraints
         for entry in constraints:
             i = entry["org"]
             j = entry["lec"]
-            d = entry['date'].date()
+            d = entry['date']
             s = self.inv_time_slots[entry['slot']]
             self.model += (self.x[(i, j, d, s)] == 1, f"custom_constraint_{i}_{j}_{d}_{s}")
 
