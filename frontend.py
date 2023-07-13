@@ -2,6 +2,8 @@ import configparser
 import os
 import shutil
 import sys
+import threading
+import time
 from tkinter import *
 from tkinter import filedialog, messagebox, Menu
 from tkinter.messagebox import showinfo
@@ -56,12 +58,15 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
 
         self.title('One in Nine')
         self.geometry("900x700")
-
+        self.progress_bar = ttk.Progressbar(self, orient="horizontal", length=300, mode="indeterminate")
+        self.progress_bar.place(relx=0.5, rely=0.9, anchor='s')
         self.config(background="white")
         self.model = None
         self.dt = None
         self.results = None
-
+        self.bind("<<StartProgress>>", lambda x: self.progress_bar.start())
+        self.bind("<<EndProgress>>", self.end_calc)
+        self.bind("<<Error>>", self.error_handler)
         self.add_menu()
 
         style = ttk.Style()
@@ -101,6 +106,10 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         button_exit.place(relx=0.1, rely=0.9, anchor='sw')
         button_calc.place(relx=0.9, rely=0.9, anchor='se')
 
+    def error_handler(self, e):
+        showinfo(title='Error',
+                 message=f"Sorry, something went wrong, Please check that data is valid\n\nIf problem persists - Contact system admins\n\n{e}")
+
     def browseFiles(self, label_file_explorer):
         filename = filedialog.askopenfilename(initialdir="/",
                                               title="Select a File",
@@ -121,13 +130,26 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
             self.results_file.set(filename)
         self.model = None
 
-    def calculate(self, ):
+    def calculate(self):
+        self.calc_event = threading.Event()
+        calculations_thread = threading.Thread(target=self.calculate_thread)
+        calculations_thread.start()
+
+    def end_calc(self, _):
+        self.progress_bar.stop()
+        if self.dt is None:
+            self.create_table(self.results)
+        else:
+            self.update_table(self.results)
+
+    def calculate_thread(self):
         if self.calendar_path.get() == '':
             showinfo(title='Missing Data', message="need to choose calendar")
         elif self.data_path.get() == '':
             showinfo(title='Missing Data', message="need to choose data")
         else:
             print("copying files")
+            self.event_generate("<<StartProgress>>")
             create_directory(resource_path("data"))
             if not self.file_exists:
                 clear_directory(resource_path("data"))
@@ -142,13 +164,19 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
             print("calculating:")
             try:
                 self.results = self.model.solve_model()
+                self.event_generate("<<EndProgress>>")
             except Exception as e:
-                showinfo(title='Error',
-                         message=f"Sorry, something went wrong, Please check that data is valid\n\nIf problem persists - Contact system admins\n\n{e}")
-            if self.dt is None:
-                self.create_table(self.results)
-            else:
-                self.update_table(self.results)
+                self.event_generate("<<Error>>", data = e)
+        return
+    def update_progress(self):
+
+        self.progress_bar.start()
+        # progress = 0
+        while not self.stop_event.is_set():
+            time.sleep(1)  # Simulating some task
+        #     progress += 1
+        #     self.progress_bar["value"] = progress
+        self.progress_bar.stop()
 
     def create_table(self, results):
         if results.empty:
