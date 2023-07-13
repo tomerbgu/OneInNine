@@ -13,7 +13,7 @@ a = Analysis(
     ['frontend.py'],
     pathex=[path_main],
     binaries=[],
-    datas=[('matrices_data','matrices_data'), ('config.ini', '.'), ('image.ico', '.')],
+    datas=[('matrices_data','matrices_data'), ('config.ini', '.'), ('logo.png', '.')],
     hiddenimports=['pulp,sys'],
     hookspath=['./hooks_dir'],
     hooksconfig={},

@@ -8,6 +8,7 @@ from tkinter.messagebox import showinfo
 
 import pandas as pd
 import ttkbootstrap as ttk
+from PIL import Image, ImageTk
 from tkinterdnd2 import *
 from ttkbootstrap.constants import *
 from ttkbootstrap.tableview import Tableview
@@ -68,14 +69,12 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         style.configure("LabelSize.TLabel", padding=(0, 35))
 
         # Create a File Explorer label
-        # labelframe = ttk.Label(self, text='dddd', bootstyle='secondary')
         self.label_file_explorer_calendar = ttk.Label(self, text="Calendar", background="#cdfeec",
                                                       style="LabelSize.TLabel", width=120, anchor="center")
         button_explore_calendar = ttk.Button(self, text="Browse Files",
                                              command=lambda: self.browseFiles(self.label_file_explorer_calendar),
                                              bootstyle="success-outline")
 
-        # labelframe2 = ttk.Labelframe(self, text='My Labelframe', bootstyle='secondary')
         self.label_file_explorer_data = ttk.Label(self, text="Data", background="#cdfeec", style="LabelSize.TLabel",
                                                   width=120, anchor="center")
         button_explore_data = ttk.Button(self, text="Browse Files",
@@ -316,7 +315,8 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
 if __name__ == "__main__":
     window = PopupWindow()  # themename="superhero"
     enable_high_dpi_awareness(root=window, scaling=1)
-    # window.iconbitmap("image.jpg")
+    icon_photo = ImageTk.PhotoImage(file=resource_path("logo.png"))
+    window.iconphoto(False, icon_photo)
 
     # window.redirect_output()
     window.mainloop()
