@@ -13,7 +13,7 @@ a = Analysis(
     ['frontend.py'],
     pathex=[path_main],
     binaries=[],
-    datas=[('matrices_data','matrices_data'), ('config.ini', '.'), ('logo.png', '.')],
+    datas=[('matrices_data','matrices_data'), ('config.ini', '.'), ('logos', 'logos')],
     hiddenimports=['pulp,sys'],
     hookspath=['./hooks_dir'],
     hooksconfig={},
@@ -48,5 +48,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='image.ico',
+    icon='logos/logo.ico',
 )

@@ -318,7 +318,7 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
 if __name__ == "__main__":
     window = PopupWindow()  # themename="superhero"
     enable_high_dpi_awareness(root=window, scaling=1)
-    icon_photo = ImageTk.PhotoImage(file=resource_path("logo.png"))
+    icon_photo = ImageTk.PhotoImage(file=resource_path(resource_path("logos/logo.png")))
     window.iconphoto(False, icon_photo)
 
     # window.redirect_output()
