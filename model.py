@@ -322,7 +322,7 @@ class Model():
         for entry in constraints:
             i = entry["org"]
             j = entry["lec"]
-            d = entry['date']
+            d = datetime.datetime.strptime(entry['date'], "%Y-%m-%d").date()
             s = self.inv_time_slots[entry['slot']]
             self.model += (self.x[(i, j, d, s)] == 0, f"custom_constraint_{i}_{j}_{d}_{s}")
 
