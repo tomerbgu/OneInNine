@@ -7,7 +7,6 @@ from socket import socket
 import pandas as pd
 from geopy.exc import GeocoderTimedOut
 from geopy.geocoders import Nominatim
-from retry import retry
 from tqdm import tqdm
 
 

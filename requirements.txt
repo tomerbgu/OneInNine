@@ -1,0 +1,8 @@
+pandas>=2
+ttkbootstrap
+tkinterdnd2
+pulp
+openpyxl
+geopy
+retry
+tqdm
