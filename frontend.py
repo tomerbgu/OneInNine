@@ -122,21 +122,29 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
                                                           "*.*")))
 
         # Change label contents
-        label_file_explorer.configure(text="File Opened: " + filename)
         if label_file_explorer == self.label_file_explorer_calendar:
+            file_type = 'Calendar'
             self.calendar_path.set(filename)
             self.file_exists = False
         elif label_file_explorer == self.label_file_explorer_data:
+            file_type = 'Data'
             self.data_path.set(filename)
             self.file_exists = False
         else:
+            file_type = 'Results'
             self.results_file.set(filename)
+        label_file_explorer.configure(text=f"{file_type} File:\n{filename}")
+
         self.model = None
 
     def calculate(self):
-        self.calc_event = threading.Event()
-        calculations_thread = threading.Thread(target=self.calculate_thread)
-        calculations_thread.start()
+        if 'single_thread' in os.environ: #for debugging
+            # showinfo("threads", "single")
+            self.calculate_thread()
+        else:
+            # showinfo("threads", "mult")
+            calculations_thread = threading.Thread(target=self.calculate_thread)
+            calculations_thread.start()
 
     def end_calc(self, _):
         self.progress_bar.stop()
@@ -248,15 +256,18 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
 
     def on_drop(self, event):
         # Get the list of files dropped into the window
-        event.widget.configure(text="File Opened: " + event.data)
         if event.widget == self.label_file_explorer_calendar:
+            file_type = 'Calendar'
             self.calendar_path.set(event.data)
             self.file_exists = False
         elif event.widget == self.label_file_explorer_data:
+            file_type = 'Data'
             self.data_path.set(event.data)
             self.file_exists = False
         elif event.widget == self.results_label:
+            file_type = 'Results'
             self.results_file.set(event.data)
+        event.widget.configure(text=f"{file_type} File:\n{event.data}")
 
     def check_if_files_exist(self):
         if hasattr(sys, "_MEIPASS"):
