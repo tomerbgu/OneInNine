@@ -57,14 +57,13 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         self.config_reader.read(resource_path('config.ini'))
 
         self.title('One in Nine')
-        self.geometry("900x700")
+        self.geometry("1350x1050")
         self.progress_bar = ttk.Progressbar(self, orient="horizontal", length=300, mode="indeterminate")
-        self.progress_bar.place(relx=0.5, rely=0.9, anchor='s')
         self.config(background="white")
         self.model = None
         self.dt = None
         self.results = None
-        self.bind("<<StartProgress>>", lambda x: self.progress_bar.start())
+        self.bind("<<StartProgress>>", self.start_progress)
         self.bind("<<EndProgress>>", self.end_calc)
         self.bind("<<Error>>", self.error_handler)
         self.add_menu()
@@ -107,9 +106,13 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         button_calc.place(relx=0.9, rely=0.9, anchor='se')
 
     def error_handler(self, e):
+        self.progress_bar.stop()
         showinfo(title='Error',
-                 message=f"Sorry, something went wrong, Please check that data is valid\n\nIf problem persists - Contact system admins\n\n{e}")
+                 message=f"Sorry, something went wrong, Please check that data is valid\n\nIf problem persists - Contact system admins\n\n{self.error_message}")
 
+    def start_progress(self, _):
+        self.progress_bar.place(relx=0.5, rely=0.9, anchor='s')
+        self.progress_bar.start()
     def browseFiles(self, label_file_explorer):
         filename = filedialog.askopenfilename(initialdir="/",
                                               title="Select a File",
@@ -151,22 +154,23 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
             print("copying files")
             self.event_generate("<<StartProgress>>")
             create_directory(resource_path("data"))
-            if not self.file_exists:
-                clear_directory(resource_path("data"))
-                copy_file_to_directory(self.calendar_path.get(),
-                                       resource_path(f"data/{self.config_reader.get('files', 'calendar_file')}"))
-                copy_file_to_directory(self.data_path.get(),
-                                       resource_path(f"data/{self.config_reader.get('files', 'data_file')}"))
-            if self.model == None:
-                self.model = Model()
-            if self.dt is not None:  # TODO might be wrong condition
-                self.add_match_constraints()
-            print("calculating:")
             try:
+                if not self.file_exists:
+                    clear_directory(resource_path("data"))
+                    copy_file_to_directory(self.calendar_path.get(),
+                                           resource_path(f"data/{self.config_reader.get('files', 'calendar_file')}"))
+                    copy_file_to_directory(self.data_path.get(),
+                                           resource_path(f"data/{self.config_reader.get('files', 'data_file')}"))
+                if self.model == None:
+                    self.model = Model()
+                if self.dt is not None:  # TODO might be wrong condition
+                    self.add_match_constraints()
+                print("calculating:")
                 self.results = self.model.solve_model()
                 self.event_generate("<<EndProgress>>")
             except Exception as e:
-                self.event_generate("<<Error>>", data = e)
+                self.error_message = e
+                self.event_generate("<<Error>>")
         return
     def update_progress(self):
 
