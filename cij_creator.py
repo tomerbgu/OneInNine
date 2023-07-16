@@ -2,12 +2,9 @@ import configparser
 import os
 import sys
 import urllib.request
-from socket import socket
 
 import pandas as pd
-from geopy.exc import GeocoderTimedOut
 from geopy.geocoders import Nominatim
-from tqdm import tqdm
 
 
 def resource_path(relative_path):
@@ -29,10 +26,10 @@ def calc_cij(etn_hard, etn_soft, lecturer, org, distances):
     soft_match = etn_soft.loc[lecturer['Ethnicity']][org['Ethnicity']]
     hardness = 65 * (is_hard * hard_match + (1 - is_hard) * soft_match)
     fti = 10 if org['Organization Type'] in lecturer['Features'] else 0
-    exp = 5 * lecturer['Experience']
+    exp = 3 * lecturer['Experience']
     row = distances[(distances['From'] == lecturer['Address']) & (distances['To'] == org['Address'])].reset_index()
     val = row['val'][0]
-    mob = 0 if lecturer['Arriving by Car']=='Yes' else 1
+    mob = 0 if lecturer['Arriving by Car']=='Yes' else 5
     dis = 30 * val - mob
     return hardness + fti + exp + dis
 
@@ -49,6 +46,7 @@ def find_text_in_list(l, x, s=0):
 
 def query_google_map(lat1, long1, lat2, long2):
     # receives two pairs of origin-destination, designated by longitude-latitude, queries the Google Maps API and returns the result string
+    # showinfo("geo", "query")
     url = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=" + str(lat1) + "," + str(
         long1) + "&destinations=" + str(lat2) + "," + str(
         long2) + "&sensor=false&units=metric&key=AIzaSyBdsBLG56CFLVk_z4tqk6_gKi_O9gR6GWU"
@@ -72,7 +70,7 @@ def dist(locs):
     new_rows = []  # Collect new rows in a list
 
     # queries each pair of stations and outputs distance and travel duration
-    for i in tqdm(range(len(locs))):
+    for i in range(len(locs)):
         for j in range(len(locs)):
             a = query_google_map(lat[i], lon[i], lat[j], lon[j])
             from_loc = str(station_id[i])
@@ -96,21 +94,27 @@ def get_distances(config, lecturers, orgs):
     locs = pd.DataFrame()
     locs['Address'] = pd.concat([lecturers['Address'], orgs['Address']]).drop_duplicates()
     locs = locs.reset_index()
+    # showinfo("geo", "checking")
     if os.path.exists(dist_file_path):
         distances = pd.read_csv(dist_file_path)
         already_have_dist = locs['Address'].isin(distances['From']).all()
         if already_have_dist:
             print("already have all relevant distances")
+            # showinfo("geo", "have all")
             return distances
+
     return calc_distances(dist_file_path, locs)
 
 def calc_distances(dist_file_path, locs):
     print("calculating new distances")
+    # showinfo("geo", "calc")
     locs[['lat', 'lon']] = locs['Address'].apply(get_coordinates).apply(pd.Series)
+    # showinfo("geo", "got coordinates")
     distances = dist(locs)
-    distances['val'] = distances['Seconds'].apply(lambda x: 10 if int(x) <= 1800 else 5 if 1800 < int(x) <= 2700 else 1)
+    distances['val'] = distances['Seconds'].apply(lambda x: 15 if int(x) == 0 else 10 if int(x) <= 1800 else 5 if 1800 < int(x) <= 2700 else 1)
+    # showinfo("geo", "saving")
     distances.to_csv(dist_file_path, encoding='utf-8-sig')
-
+    # showinfo("geo", "saved")
     return distances
 
 
