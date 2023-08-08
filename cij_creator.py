@@ -4,6 +4,9 @@ import sys
 import urllib.request
 
 import pandas as pd
+import certifi
+import ssl
+import geopy.geocoders
 from geopy.geocoders import Nominatim
 
 
@@ -153,7 +156,9 @@ def main():
 
 
 def get_coordinates(city):
-    geolocator = Nominatim(user_agent="my_app")
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    geopy.geocoders.options.default_ssl_context = ctx
+    geolocator = Nominatim(scheme='http', user_agent="my_app")
     location = geolocator.geocode(city)
     latitude = location.latitude
     longitude = location.longitude

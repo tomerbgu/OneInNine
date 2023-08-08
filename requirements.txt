@@ -6,3 +6,4 @@ openpyxl
 geopy
 retry
 tqdm
+certifi

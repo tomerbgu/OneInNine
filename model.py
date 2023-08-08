@@ -281,7 +281,7 @@ class Model():
                     print("f-" + str(item), self.f[item].varValue)
         else:
             print("Optimization problem did not find an optimal solution.")
-            return None
+            raise Exception("Could not find an optimal solution.")
 
 
         # Create a DataFrame to store the results

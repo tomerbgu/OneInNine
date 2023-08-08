@@ -258,16 +258,16 @@ class PopupWindow(ttk.Window, TkinterDnD.Tk):
         # Get the list of files dropped into the window
         if event.widget == self.label_file_explorer_calendar:
             file_type = 'Calendar'
-            self.calendar_path.set(event.data)
+            self.calendar_path.set(event.data[1:-1])
             self.file_exists = False
         elif event.widget == self.label_file_explorer_data:
             file_type = 'Data'
-            self.data_path.set(event.data)
+            self.data_path.set(event.data[1:-1])
             self.file_exists = False
         elif event.widget == self.results_label:
             file_type = 'Results'
-            self.results_file.set(event.data)
-        event.widget.configure(text=f"{file_type} File:\n{event.data}")
+            self.results_file.set(event.data[1:-1])
+        event.widget.configure(text=f"{file_type} File:\n{event.data[1:-1]}")
 
     def check_if_files_exist(self):
         if hasattr(sys, "_MEIPASS"):
